@@ -227,6 +227,41 @@ _map_save:
 	ret
 
 /*
+ *	BIOS disk I/O wrapper
+ *	int hd_biosio(uint16_t dev_op, uint16_t count, uint16_t sector, void *buf)
+ *	  dev_op at rr14(#4): device in high byte, opcode in low byte
+ *	  count at rr14(#6): sector count
+ *	  sector at rr14(#8): starting sector number
+ *	  buf at rr14(#10): buffer address (32-bit segmented pointer)
+ *
+ *	Returns 0 on success, error code on failure (in r2).
+ *	Must save/restore R10 (udata pointer) since BIOS uses rr10 for buffer.
+ */
+	.globl	_hd_biosio
+_hd_biosio:
+	pushl	@rr14, rr10		! save udata pointer
+	pushl	@rr14, rr8		! save callee-saved
+
+	di	vi,nvi			! disable interrupts during BIOS call
+
+	ld	r7, rr14(#12)		! dev_op (adjusted for 2 pushes = +8)
+	ld	r8, rr14(#14)		! count
+	ld	r9, rr14(#16)		! sector
+	ldl	rr10, rr14(#18)		! buffer (seg:off) — clobbers R10!
+
+	ldl	rr12, #0x84000068	! BIOS disk_io entry point
+	call	@rr12
+
+	ldb	rl2, rl7		! return error code in r2
+	subb	rh2, rh2		! zero extend
+
+	ei	vi,nvi			! re-enable interrupts
+
+	popl	rr8, @rr14		! restore callee-saved
+	popl	rr10, @rr14		! restore udata pointer
+	ret
+
+/*
  *	Debug character output via serial port (i8251A at 0x00C1)
  *	Called from C: void outchar(uint_fast8_t c)
  *	Argument on stack (stack calling convention)

@@ -1,5 +1,5 @@
 
-CSRCS = devtty.c
+CSRCS = devtty.c devhd.c
 CSRCS += devices.c main.c libc.c
 
 ASRCS = m20.S crt0.S

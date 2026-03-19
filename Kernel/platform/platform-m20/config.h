@@ -62,5 +62,6 @@
 #define UFTSIZE		16
 
 #define BOOTDEVICENAMES "fd#,hd#"
+#define BOOTDEVICE	0x0100		/* hd0 = major 1, minor 0 */
 
 #define TTY_INIT_BAUD	B9600

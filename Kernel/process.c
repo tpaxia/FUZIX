@@ -1073,5 +1073,6 @@ void exec_or_die(void)
 	kputs("Starting /init\n");
 	plt_discard();
 	_execve();
+	kprintf("execve failed: err=%d\n", udata.u_error);
 	panic(PANIC_NOINIT);	/* BIG Trouble if we Get Here!! */
 }
