@@ -347,9 +347,7 @@ void fuzix_main(void)
 #endif
 
 	tty_init();
-
-	if (d_open(TTYDEV, 0) != 0)
-		panic(PANIC_NOTTY);
+	d_open(TTYDEV, 0);
 
 	/* Sign on messages */
 	kprintf(
