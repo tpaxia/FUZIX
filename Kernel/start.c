@@ -389,6 +389,7 @@ void fuzix_main(void)
 	/* Parameters message */
 	kprintf("%dKiB total RAM, %dKiB available to processes (%d processes max)\n", ramsize, procmem, maxproc);
 
+
 	/* runtime configurable, defaults to build time setting */
 	ticks_per_dsecond = TICKSPERSEC / 10;
 
@@ -399,6 +400,7 @@ void fuzix_main(void)
 	__hard_ei();		/* Physical interrupts on */
 #endif
 	kputs("ok.\n");
+
 
 	/* initialise hardware devices */
 	device_init();

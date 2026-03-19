@@ -105,13 +105,21 @@ _outw:
  *
  *	irqflags_t ___hard_di(void)
  *	Returns previous FCW interrupt bits in r2
+ *
+ *	Z8001 FCW bit layout:
+ *	  Bit 15: SEG (segmented mode, read-only on Z8001)
+ *	  Bit 14: S/N (System/Normal mode)
+ *	  Bit 13: EPA (Extended Processing Architecture enable)
+ *	  Bit 12: VIE (Vectored Interrupt Enable)
+ *	  Bit 11: NVIE (Non-Vectored Interrupt Enable)
+ *	  Bits 10-0: flags (C, Z, S, P/V, DA, H)
  */
 ___hard_di:
 	ldctl	r2, fcw
 	ld	r1, r2
-	and	r1, #0x3FFF		! clear VIE and NVIE bits
+	and	r1, #0xE7FF		! clear VIE (bit 12) and NVIE (bit 11)
 	ldctl	fcw, r1
-	and	r2, #0xC000		! return only interrupt enable bits
+	and	r2, #0x1800		! return only VIE+NVIE bits
 	ret
 
 /*
@@ -126,10 +134,10 @@ ___hard_ei:
  *	flags at rr14(#4)
  */
 ___hard_irqrestore:
-	ld	r1, rr14(#4)		! flags from stack
+	ld	r1, rr14(#4)		! flags from stack (VIE+NVIE bits)
 	ldctl	r0, fcw
-	and	r0, #0x3FFF		! clear interrupt bits
-	or	r0, r1			! restore saved bits
+	and	r0, #0xE7FF		! clear VIE (bit 12) and NVIE (bit 11)
+	or	r0, r1			! restore saved VIE+NVIE
 	ldctl	fcw, r0
 	ret
 

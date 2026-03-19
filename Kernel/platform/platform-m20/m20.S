@@ -117,11 +117,78 @@ _init_hardware:
 	ldctl	psapoff, r0
 
 	/*
-	 * TODO: fill PSAP entries with our handlers
-	 * For now leave them zeroed (BSS) — any trap/interrupt
-	 * before we set them up will jump to 0 and crash,
-	 * but interrupts are masked so that's OK until we enable them.
+	 *	Fill PSAP entries with handler addresses.
+	 *	NVI MUST be set up before the PIT timer fires.
+	 *
+	 *	PSAP layout (8 bytes per entry):
+	 *	  +0: reserved (identifier)
+	 *	  +2: FCW for handler
+	 *	  +4: PC segment
+	 *	  +6: PC offset
+	 *
+	 *	Offsets from PSAP base:
+	 *	  0x00: reserved
+	 *	  0x08: extended instruction trap
+	 *	  0x10: privileged instruction trap
+	 *	  0x18: system call (SC)
+	 *	  0x20: segmentation trap
+	 *	  0x28: NMI
+	 *	  0x30: NVI (timer)
+	 *	  0x38+: vectored interrupts
 	 */
+	/*
+	 * PSAP table is at <<2>>:0100 (set by ldctl psapoff above).
+	 * Fill all entries BEFORE the PIT timer starts generating NVI.
+	 *
+	 * Each entry is 8 bytes: reserved(2), FCW(2), PC_seg(2), PC_off(2)
+	 * We use r0=FCW, r1=segment for all entries.
+	 */
+	ld	r2, #0x8200		! segment 2
+	ld	r3, #0x0100		! offset 0x100
+	ld	r0, #0xC000		! FCW: VIE+NVIE (matches BIOS)
+	ld	r1, #0x8B00		! PC segment B (kernel code)
+
+	! Extended instruction trap (offset 0x08)
+	ld	rr2(#0x0A), r0
+	ld	rr2(#0x0C), r1
+	lda	rr4, _e_ext_instr
+	ld	rr2(#0x0E), r5
+
+	! Privileged instruction trap (offset 0x10)
+	ld	rr2(#0x12), r0
+	ld	rr2(#0x14), r1
+	lda	rr4, _e_priv_instr
+	ld	rr2(#0x16), r5
+
+	! System call handler (offset 0x18)
+	ld	rr2(#0x1A), r0
+	ld	rr2(#0x1C), r1
+	lda	rr4, _e_syscall
+	ld	rr2(#0x1E), r5
+
+	! Segmentation trap (offset 0x20)
+	ld	rr2(#0x22), r0
+	ld	rr2(#0x24), r1
+	lda	rr4, _e_segv
+	ld	rr2(#0x26), r5
+
+	! NMI handler (offset 0x28)
+	ld	rr2(#0x2A), r0
+	ld	rr2(#0x2C), r1
+	lda	rr4, _e_nmi
+	ld	rr2(#0x2E), r5
+
+	! NVI handler (offset 0x30) — CRITICAL: PIT timer fires here
+	ld	rr2(#0x32), r0
+	ld	rr2(#0x34), r1
+	lda	rr4, _e_nvi
+	ld	rr2(#0x36), r5
+
+	! VI handler — vectored interrupts (offset 0x38)
+	ld	rr2(#0x3A), r0
+	ld	rr2(#0x3C), r1
+	lda	rr4, _e_vi
+	ld	rr2(#0x3E), r5
 
 	/* Set memory size */
 	ld	_ramsize, #512		! 512 KB
