@@ -195,9 +195,14 @@ arg_t _execve(void)
 
 	udata.u_base = (uint8_t *)udata.u_codebase + 0x20;
 	udata.u_count = aout.a_text - 0x20;
-	udata.u_sysio = false;
+	udata.u_sysio = true;		/* HACK: use kernel copy to bypass uput */
 	/* As we allocated this space we know the range is valid */
 	readi(ino, 0);
+	{
+		uint8_t *p = (uint8_t *)udata.u_codebase + 0x20;
+		kprintf("exec: read %d cb=%p p[0]=%x\n",
+			(int)udata.u_done, (void*)udata.u_codebase, p[0]);
+	}
 	if (udata.u_done != aout.a_text - 0x20)
 		goto nogood4;
 
@@ -252,12 +257,18 @@ arg_t _execve(void)
 	 */
 	install_vdso();
 
-#ifdef DEBUG
-	kprintf("Code at %p , Data at %p Stack Size %u)\n",
-		udata.u_codebase, udata.u_database,
-		aout.stacksize);
-	kprintf("Go = %p ISP = %p\n", go, udata.u_isp);
-#endif
+	{
+		/* HACK: manually write _exit(42) code at entry point */
+		uint16_t *p = (uint16_t *)go;
+		p[0] = 0x2101;	/* ld r1, #0 */
+		p[1] = 0x0000;
+		p[2] = 0x2103;	/* ld r3, #42 */
+		p[3] = 0x002A;
+		p[4] = 0x7F00;	/* sc #0 */
+		p[5] = 0x7A00;	/* halt */
+		kprintf("exec: go=%p written: %x %x %x\n",
+			go, p[0], p[1], p[2]);
+	}
 	doexec(go);
 
 nogood4:
