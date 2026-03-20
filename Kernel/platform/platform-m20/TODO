@@ -1,0 +1,53 @@
+# Olivetti M20 FUZIX Port — TODO
+
+## Critical: exec binary loading
+  readi during exec claims done=40 (success) but data reads back as
+  zeros from the destination address. Direct writes and manual code
+  injection work fine at the same address. The issue is in the
+  blktok/blktou → memcpy/_uput path during readi.
+
+  Current workaround: manual code injection in syscall_exec32.c.
+
+  Investigation leads:
+  - Check if memcpy destination pointer is correct at call time
+  - Add debug prints inside readi loop (uputblk call)
+  - Check if umove advances u_base correctly with 32-bit pointers
+  - Verify blktok macro expansion produces correct argument order
+  - Test with CONFIG_LARGE_IO_DIRECT disabled
+  - May be another WORD_REGISTER_OPERATIONS-class codegen bug
+
+## Critical: user-space toolchain
+  - Build crt0 for Z8001 user programs (VDSO syscall stub)
+  - Syscall wrappers (write, read, open, _exit, fork, exec, wait)
+  - Cross-compile newlib or FUZIX libc for Z8001
+  - Build /init, /bin/sh, basic utils
+
+## Critical: process management
+  - dofork (tricks.S) — currently a stub returning 0
+  - switchin/switchout — skeleton exists, needs testing
+  - Signal delivery — return_via_signal is a TODO stub
+  - d_open return value check — removed, needs restoring
+
+## Important: drivers
+  - Keyboard input — serial RxRDY polling works in tty_interrupt,
+    needs a user program that reads stdin to test
+  - Floppy driver — same BIOS disk_io interface as HD
+  - Video console — MC6845 framebuffer at segment 3
+  - Keyboard USART — i8251A at 0xA1/0xA3 with M20 keyboard protocol
+
+## Important: memory management
+  - Multi-segment user processes (use seg A/C/D/E for larger programs)
+  - Per-segment allocation instead of single flat pool
+  - SYS_HDPRES workaround — find why BIOS workspace gets cleared
+
+## Compiler bugs (workarounds in place)
+  - WORD_REGISTER_OPERATIONS: FIXED in gcc — byte ops don't extend
+  - Jump table codegen: FIXED — CASE_VECTOR_MODE HImode
+  - addr(Rn) register: FIXED — use low word of pair
+  - Register global asm("r10"): WORKAROUND — -ffixed-r10
+  - Need to run GCC torture tests to find more bugs
+
+## Nice to have
+  - RTC / timekeeping
+  - Printer driver (i8255A parallel port)
+  - Proper build system integration (make from Kernel/ root)
