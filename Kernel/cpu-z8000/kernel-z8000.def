@@ -25,7 +25,7 @@
 #define U_DATA__U_CODEBASE	50
 #define U_DATA__U_SIGVEC	54
 
-#define UBLOCK_SIZE		1024
+#define UBLOCK_SIZE		2048
 
 #define P_TAB__P_STATUS_OFFSET	0
 #define P_TAB__P_FLAGS_OFFSET	1

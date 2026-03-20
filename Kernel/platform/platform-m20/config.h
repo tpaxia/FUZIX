@@ -25,8 +25,8 @@
 #define CONFIG_LARGE_IO_DIRECT(x)	1
 
 #define CONFIG_SPLIT_UDATA
-#define UDATA_SIZE	1024
-#define UDATA_BLKS	2
+#define UDATA_SIZE	2048
+#define UDATA_BLKS	4
 
 /*
  *	Timer: NVI driven by i8253 Counter 2
