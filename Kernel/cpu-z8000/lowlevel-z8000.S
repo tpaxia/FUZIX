@@ -170,7 +170,11 @@ _set_usp:
  *	  +4: PC segment
  *	  +6: PC offset
  *
- *	User passes syscall number in R1, args in R3, R4, R5, R6.
+ *	User passes syscall number in R1, args as 32-bit pairs:
+ *	  RR2 (R2:R3) = argn
+ *	  RR4 (R4:R5) = argn1
+ *	  RR6 (R6:R7) = argn2
+ *	For 16-bit args, user sets high word to 0 (e.g. clr r2; ld r3, #fd).
  *	Return value in RR2 (to match C convention).
  */
 _e_syscall:
@@ -181,11 +185,15 @@ _e_syscall:
 	ldb	U_DATA__U_CALLNO(r10), rl1	! syscall number
 	ldb	U_DATA__U_INSYS(r10), #1
 
-	/* Save arguments */
-	ld	U_DATA__U_ARGN(r10), r3
+	/* Save 32-bit arguments.
+	   arg_t is 32-bit, stored as two 16-bit words (big-endian).
+	   U_DATA__U_ARGN is the offset of the high word. */
+	ld	U_DATA__U_ARGN(r10), r2
+	ld	U_DATA__U_ARGN+2(r10), r3
 	ld	U_DATA__U_ARGN1(r10), r4
-	ld	U_DATA__U_ARGN2(r10), r5
-	ld	U_DATA__U_ARGN3(r10), r6
+	ld	U_DATA__U_ARGN1+2(r10), r5
+	ld	U_DATA__U_ARGN2(r10), r6
+	ld	U_DATA__U_ARGN2+2(r10), r7
 
 	/* Save user stack pointer */
 	ldctl	r0, nspseg
