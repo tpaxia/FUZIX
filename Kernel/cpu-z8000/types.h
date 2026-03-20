@@ -4,7 +4,7 @@ typedef unsigned short uint16_t;
 typedef signed short int16_t;
 typedef unsigned char uint8_t;
 typedef signed char int8_t;
-typedef unsigned short size_t;
+typedef unsigned long size_t;		/* Must be 32-bit: malloc uses bit 31 as USED flag */
 
 typedef unsigned char uint_fast8_t;
 typedef signed char int_fast8_t;

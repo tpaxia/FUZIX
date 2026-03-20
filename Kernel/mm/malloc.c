@@ -177,8 +177,10 @@ void kfree(void *p)
 	kprintf("malloc frees %p\n", p);
 #endif
 
-	if (UNUSED(b))
+	if (UNUSED(b)) {
+		kprintf("kfree: p=%p b=%p len=%x\n", p, b, (unsigned)b->length);
 		panic(PANIC_BADFREE);
+	}
 	
 	b->length &= 0x7fffffff;
 	mfree += b->length;

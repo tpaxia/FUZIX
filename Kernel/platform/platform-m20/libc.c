@@ -41,6 +41,7 @@ void set_cpu_type(void)
 {
 }
 
+
 /* Binary relocation - TODO: implement for Z8000 a.out */
 unsigned plt_relocate(struct exec *bf)
 {
