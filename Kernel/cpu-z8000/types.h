@@ -11,8 +11,8 @@ typedef signed char int_fast8_t;
 
 typedef uint16_t irqflags_t;
 
-typedef int16_t arg_t;
-typedef uint16_t uarg_t;		/* Holds arguments */
+typedef int32_t arg_t;			/* Must hold pointers (32-bit segmented) */
+typedef uint32_t uarg_t;		/* Holds arguments */
 typedef uint16_t usize_t;		/* Largest value passed by userspace */
 typedef int16_t susize_t;
 typedef int16_t ssize_t;

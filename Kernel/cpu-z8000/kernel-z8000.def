@@ -16,14 +16,14 @@
 #define U_DATA__U_ININTERRUPT	22
 #define U_DATA__U_CURSIG	23
 #define U_DATA__U_ARGN		24
-#define U_DATA__U_ARGN1		26
-#define U_DATA__U_ARGN2		28
-#define U_DATA__U_ARGN3		30
-#define U_DATA__U_ISP		32
-#define U_DATA__U_TOP		36
-#define U_DATA__U_BREAK		40
-#define U_DATA__U_CODEBASE	44
-#define U_DATA__U_SIGVEC	48
+#define U_DATA__U_ARGN1		28
+#define U_DATA__U_ARGN2		32
+#define U_DATA__U_ARGN3		36
+#define U_DATA__U_ISP		40
+#define U_DATA__U_TOP		44
+#define U_DATA__U_BREAK		46
+#define U_DATA__U_CODEBASE	50
+#define U_DATA__U_SIGVEC	54
 
 #define UBLOCK_SIZE		1024
 
