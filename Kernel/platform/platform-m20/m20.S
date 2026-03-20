@@ -41,12 +41,11 @@ _plt_reboot:
 _init_early:
 	/*
 	 * Set up udata pointer in R10 and shadow.
-	 * udata_block is in segment 2 (.bss).
+	 * Also set _udata_ptr_seg for doexec's SP reset.
 	 */
-	lda	rr10, _udata_block	! R10 = offset, R11 = unused
-	! For now R10 holds just the offset within seg 2
-	! TODO: proper segmented udata management
+	lda	rr10, _udata_block
 	ldl	_udata_shadow, rr10
+	ldl	_udata_ptr_seg, rr10	! defined in lowlevel-z8000.S
 	ret
 
 _plt_idle:

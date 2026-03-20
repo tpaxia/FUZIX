@@ -257,7 +257,7 @@ _doexec:
 	 */
 	push	@rr14, r3		! PC offset
 	push	@rr14, r2		! PC segment
-	ld	r0, #0xC000		! FCW: SEG=1, S/N=0, VIE=1, NVIE=1
+	ld	r0, #0x9800		! FCW: SEG=1, S/N=0(normal), VIE=1, NVIE=1
 	push	@rr14, r0
 	clr	r0			! identifier
 	push	@rr14, r0
@@ -492,6 +492,7 @@ _swap_done:
 
 _udata_shadow:
 	.long	0			! segmented pointer to current udata
+	.globl	_udata_ptr_seg
 _udata_ptr_seg:
 	.long	0			! segmented base for stack reset
 _kernel_flag:
