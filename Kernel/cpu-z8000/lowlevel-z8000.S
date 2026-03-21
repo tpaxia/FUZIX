@@ -178,27 +178,27 @@ _set_usp:
  *	Return value in RR2 (to match C convention).
  */
 _e_syscall:
-	/* Save R10 (udata pointer register) - must be first for fork */
-	push	@rr14, r10
-	ld	r10, _udata_shadow
+	/* Save RR10 (udata pointer register pair) - must be first for fork */
+	pushl	@rr14, rr10
+	ldl	rr10, _udata_shadow
 
-	ldb	U_DATA__U_CALLNO(r10), rl1	! syscall number
-	ldb	U_DATA__U_INSYS(r10), #1
+	ldb	(0x82000000+U_DATA__U_CALLNO)(r11), rl1	! syscall number
+	ldb	(0x82000000+U_DATA__U_INSYS)(r11), #1
 
 	/* Save 32-bit arguments.
 	   arg_t is 32-bit, stored as two 16-bit words (big-endian).
 	   U_DATA__U_ARGN is the offset of the high word. */
-	ld	U_DATA__U_ARGN(r10), r2
-	ld	U_DATA__U_ARGN+2(r10), r3
-	ld	U_DATA__U_ARGN1(r10), r4
-	ld	U_DATA__U_ARGN1+2(r10), r5
-	ld	U_DATA__U_ARGN2(r10), r6
-	ld	U_DATA__U_ARGN2+2(r10), r7
+	ld	rr10(#U_DATA__U_ARGN), r2
+	ld	rr10(#U_DATA__U_ARGN+2), r3
+	ld	rr10(#U_DATA__U_ARGN1), r4
+	ld	rr10(#U_DATA__U_ARGN1+2), r5
+	ld	rr10(#U_DATA__U_ARGN2), r6
+	ld	rr10(#U_DATA__U_ARGN2+2), r7
 
 	/* Save user stack pointer */
 	ldctl	r0, nspseg
 	ldctl	r1, nspoff
-	ldl	U_DATA__U_SYSCALL_SP(r10), rr0
+	ldl	rr10(#U_DATA__U_SYSCALL_SP), rr0
 
 	ldb	_kernel_flag, #1
 	ei	vi,nvi			! enable interrupts for syscall
@@ -207,15 +207,15 @@ _e_syscall:
 
 	di	vi,nvi
 
-	ldb	U_DATA__U_INSYS(r10), #0
+	ldb	(0x82000000+U_DATA__U_INSYS)(r11), #0
 	ldb	_kernel_flag, #0
 
 	/* Check for errors */
-	ld	r1, U_DATA__U_ERROR(r10)
+	ld	r1, rr10(#U_DATA__U_ERROR)
 	test	r1
 	jr	nz, sysc_err
 
-	ldl	rr2, U_DATA__U_RETVAL(r10)
+	ldl	rr2, rr10(#U_DATA__U_RETVAL)
 	jr	sysc_sig
 
 sysc_err:
@@ -223,16 +223,16 @@ sysc_err:
 	ld	r3, #-1
 
 sysc_sig:
-	testb	U_DATA__U_CURSIG(r10)
+	testb	(0x82000000+U_DATA__U_CURSIG)(r11)
 	jr	nz, return_via_signal
 
-	/* Normal return - pop R10 and do IRET */
-	pop	r10, @rr14
+	/* Normal return - pop RR10 and do IRET */
+	popl	rr10, @rr14
 	iret
 
 return_via_signal:
 	/* TODO: signal delivery */
-	pop	r10, @rr14
+	popl	rr10, @rr14
 	iret
 
 /*
@@ -249,10 +249,10 @@ _doexec:
 	add	r15, #UBLOCK_SIZE
 
 	ldb	_kernel_flag, #0
-	ldb	U_DATA__U_INSYS(r10), #0
+	ldb	(0x82000000+U_DATA__U_INSYS)(r11), #0
 
 	/* Set user stack pointer */
-	ldl	rr0, U_DATA__U_ISP(r10)
+	ldl	rr0, rr10(#U_DATA__U_ISP)
 	ldctl	nspseg, r0
 	ldctl	nspoff, r1
 
@@ -325,38 +325,38 @@ _e_nvi:
 	pushl	@rr14, rr2
 	pushl	@rr14, rr4
 	pushl	@rr14, rr6
-	push	@rr14, r10
+	pushl	@rr14, rr10
 
-	ld	r10, _udata_shadow
-	ldb	U_DATA__U_ININTERRUPT(r10), #1
+	ldl	rr10, _udata_shadow
+	ldb	(0x82000000+U_DATA__U_ININTERRUPT)(r11), #1
 
 	call	_plt_interrupt
 
-	ldb	U_DATA__U_ININTERRUPT(r10), #0
+	ldb	(0x82000000+U_DATA__U_ININTERRUPT)(r11), #0
 
-	testb	U_DATA__U_INSYS(r10)
+	testb	(0x82000000+U_DATA__U_INSYS)(r11)
 	jr	nz, nvi_no_preempt
 
 	testb	_need_resched
 	jr	z, nvi_no_preempt
 
 	/* Preemption */
-	ldl	rr2, U_DATA__U_PTAB(r10)
-	ldb	rl0, P_TAB__P_STATUS_OFFSET(r2)
+	ldl	rr2, rr10(#U_DATA__U_PTAB)
+	ldb	rl0, (0x82000000+P_TAB__P_STATUS_OFFSET)(r3)
 	cpb	rl0, #P_RUNNING
 	jr	nz, nvi_no_ready
-	ldb	P_TAB__P_STATUS_OFFSET(r2), #P_READY
-	ldb	rl0, P_TAB__P_FLAGS_OFFSET(r2)
+	ldb	(0x82000000+P_TAB__P_STATUS_OFFSET)(r3), #P_READY
+	ldb	rl0, (0x82000000+P_TAB__P_FLAGS_OFFSET)(r3)
 	orb	rl0, #PFL_BATCH
-	ldb	P_TAB__P_FLAGS_OFFSET(r2), rl0
+	ldb	(0x82000000+P_TAB__P_FLAGS_OFFSET)(r3), rl0
 nvi_no_ready:
 	call	_switchout
 
 nvi_no_preempt:
-	testb	U_DATA__U_CURSIG(r10)
+	testb	(0x82000000+U_DATA__U_CURSIG)(r11)
 	jr	nz, nvi_signal
 
-	pop	r10, @rr14
+	popl	rr10, @rr14
 	popl	rr6, @rr14
 	popl	rr4, @rr14
 	popl	rr2, @rr14
@@ -365,7 +365,7 @@ nvi_no_preempt:
 
 nvi_signal:
 	/* TODO: deliver signal on return from interrupt */
-	pop	r10, @rr14
+	popl	rr10, @rr14
 	popl	rr6, @rr14
 	popl	rr4, @rr14
 	popl	rr2, @rr14
@@ -380,16 +380,16 @@ _e_vi:
 	pushl	@rr14, rr2
 	pushl	@rr14, rr4
 	pushl	@rr14, rr6
-	push	@rr14, r10
+	pushl	@rr14, rr10
 
-	ld	r10, _udata_shadow
-	ldb	U_DATA__U_ININTERRUPT(r10), #1
+	ldl	rr10, _udata_shadow
+	ldb	(0x82000000+U_DATA__U_ININTERRUPT)(r11), #1
 
 	call	_plt_interrupt
 
-	ldb	U_DATA__U_ININTERRUPT(r10), #0
+	ldb	(0x82000000+U_DATA__U_ININTERRUPT)(r11), #0
 
-	pop	r10, @rr14
+	popl	rr10, @rr14
 	popl	rr6, @rr14
 	popl	rr4, @rr14
 	popl	rr2, @rr14

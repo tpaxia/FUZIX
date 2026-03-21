@@ -37,7 +37,7 @@ _plt_switchout:
 	pushl	@rr14, rr12
 
 	/* Save kernel SP in udata */
-	ldl	U_DATA__U_SP(r10), rr14
+	ldl	rr10(#U_DATA__U_SP), rr14
 
 	/* Find another process to run */
 	call	_getproc
@@ -59,11 +59,10 @@ _switchin:
 	ldl	rr2, rr14(#4)		! get process pointer from stack
 
 	/* Get the udata pointer for this process */
-	ldl	rr4, P_TAB__P_UDATA_OFFSET(r2)
-	ld	r10, r4			! set R10 = udata for new process
+	ldl	rr10, rr2(#P_TAB__P_UDATA_OFFSET)
 
 	/* Verify u_ptab matches */
-	ldl	rr6, U_DATA__U_PTAB(r10)
+	ldl	rr6, rr10(#U_DATA__U_PTAB)
 	cpl	rr6, rr2
 	jr	nz, switchinfail
 
@@ -71,10 +70,10 @@ _switchin:
 	ldl	_udata_shadow, rr10
 
 	/* Restore kernel SP */
-	ldl	rr14, U_DATA__U_SP(r10)
+	ldl	rr14, rr10(#U_DATA__U_SP)
 
 	/* Mark process as running */
-	ldb	P_TAB__P_STATUS_OFFSET(r2), #P_RUNNING
+	ldb	(0x82000000+P_TAB__P_STATUS_OFFSET)(r3), #P_RUNNING
 
 	/* Restore callee-saved registers */
 	popl	rr12, @rr14
@@ -87,7 +86,7 @@ _switchin:
 	/* Clear runticks */
 	clr	_runticks
 
-	testb	U_DATA__U_ININTERRUPT(r10)
+	testb	(0x82000000+U_DATA__U_ININTERRUPT)(r11)
 	jr	nz, keepoff
 
 	ei	vi,nvi

@@ -208,6 +208,13 @@ int main(int argc, char **argv)
 		memcpy(image + a_text, buf + data_scnptr, data_size);
 	}
 
+	/* Read COFF symbol table for fixing relocation values.
+	 * The ld -r output has correct symbol addresses but
+	 * incorrect instruction values (double-counted offsets).
+	 * We re-apply the correct symbol values ourselves. */
+	uint32_t symoff = get32(buf + 8);	/* f_symptr */
+	uint32_t nsyms = get32(buf + 12);	/* f_nsyms */
+
 	/* Process relocations: keep only R_IMM32 from .text */
 	for (int i = 0; i < text_nreloc; i++) {
 		uint32_t roff = text_relptr + i * RELSZ;
@@ -215,24 +222,33 @@ int main(int argc, char **argv)
 			die("relocation beyond EOF");
 		uint8_t *rp = buf + roff;
 		uint32_t r_vaddr = get32(rp + 0);
-		/* r_symndx at 4 */
+		uint32_t r_symndx = get32(rp + 4);
 		/* r_offset at 8 */
 		uint16_t r_type = get16(rp + 12);
 		/* r_stuff at 14 */
 
 		if (r_type == R_IMM32) {
-			/* r_vaddr is offset within .text section (VMA=0 in -r output) */
+			if (r_symndx >= nsyms)
+				die("relocation symbol index out of range");
+			/* Read symbol: 18 bytes each (SYMESZ) */
+			uint8_t *sym = buf + symoff + r_symndx * 18;
+			uint32_t sym_value = get32(sym + 8);  /* e_value */
+			/* Write correct flat value into image */
 			uint32_t final_offset = r_vaddr;
+			if (final_offset + 3 >= image_size)
+				die("relocation offset out of range");
+			image[final_offset]     = (sym_value >> 24) & 0xff;
+			image[final_offset + 1] = (sym_value >> 16) & 0xff;
+			image[final_offset + 2] = (sym_value >> 8) & 0xff;
+			image[final_offset + 3] = sym_value & 0xff;
 			if (verbose)
-				printf("  reloc @0x%04x (type 0x%02x) -> final 0x%04x\n",
-				       r_vaddr, r_type, final_offset);
+				printf("  reloc @0x%04x sym[%u]=0x%08x\n",
+				       final_offset, r_symndx, sym_value);
 			add_reloc(final_offset);
 		} else if (verbose) {
 			printf("  skip reloc @0x%04x type 0x%02x\n", r_vaddr, r_type);
 		}
 	}
-
-	/* TODO: data section relocations if needed */
 
 	if (verbose)
 		printf("a_text=0x%x a_data=0x%x a_bss=0x%x relocs=%u\n",

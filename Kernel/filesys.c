@@ -218,7 +218,6 @@ inoptr srch_dir(register inoptr wd, uint8_t *compname)
             d = blkptr(buf, curentry * DIR_LEN, DIR_LEN);
             if(namecomp(compname, d->d_name)) {
                 inum = d->d_ino;
-                kprintf("M%d ", inum);
                 brelse(buf);
                 i_unlock(wd);
                 return i_open(wd->c_dev, inum);
