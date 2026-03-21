@@ -387,6 +387,10 @@ _e_vi:
 
 	call	_plt_interrupt
 
+	! Send non-specific EOI to i8259A PIC
+	ldb	rl0, #0x20
+	outb	#0x0041, rl0
+
 	ldb	(0x82000000+U_DATA__U_ININTERRUPT)(r11), #0
 
 	popl	rr10, @rr14

@@ -183,11 +183,20 @@ _init_hardware:
 	lda	rr4, _e_nvi
 	ld	rr2(#0x36), r5
 
-	! VI handler — vectored interrupts (offset 0x38)
-	ld	rr2(#0x3A), r0
-	ld	rr2(#0x3C), r1
+	! VI handlers — vectored interrupts (offset 0x38, 8 entries)
+	! PIC ICW2=0x00 so IR0=vec0, IR1=vec1, ..., IR7=vec7
+	! Each entry at PSAP + 0x38 + (vec * 8)
 	lda	rr4, _e_vi
-	ld	rr2(#0x3E), r5
+	ld	r6, #8			! 8 vectors
+	ld	r7, #0x3A		! starting offset
+_vi_fill:
+	ld	rr2(r7), r0		! FCW
+	inc	r7, #2
+	ld	rr2(r7), r1		! PC segment
+	inc	r7, #2
+	ld	rr2(r7), r5		! PC offset
+	inc	r7, #4			! skip to next entry (reserved word)
+	djnz	r6, _vi_fill
 
 	/* Set memory size */
 	ld	_ramsize, #512		! 512 KB
