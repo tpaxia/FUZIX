@@ -2,9 +2,18 @@ Z8K_GCC = /Users/paxia/Projects/gcc-z8k/build-z8k-coff/gcc
 XGCC = $(Z8K_GCC)/xgcc -B$(Z8K_GCC)/
 AS = z8k-coff-as
 LD = z8k-coff-ld
-OBJCOPY = z8k-coff-objcopy
+COFF2AOUT = ../../../../Standalone/coff2aout
 
 CFLAGS = -Os -msegmented -ffreestanding -nostdlib -fno-builtin -Wall
+
+LDSCRIPT = \
+	"OUTPUT_FORMAT(\"coff-z8k\") \
+	OUTPUT_ARCH(z8001) \
+	SECTIONS { \
+	  .text 0 : { *(.text .text.*) } \
+	  .data SIZEOF(.text) : { *(.data .rodata .rodata.*) } \
+	  .bss : { *(.bss) *(COMMON) } \
+	}"
 
 all: init.bin
 
@@ -17,12 +26,16 @@ syscalls.o: syscalls.S
 init.o: init.c
 	$(XGCC) $(CFLAGS) -c -o $@ $<
 
-init.coff: crt0.o init.o syscalls.o
-	$(LD) -m z8001 -T user.ld -o $@ crt0.o init.o syscalls.o
+INIT_OBJS = crt0.o init.o syscalls.o
 
-init.bin: init.coff fixhdr.py
-	$(OBJCOPY) -O binary $< $@
-	python3 fixhdr.py $@
+init.merged.o: $(INIT_OBJS)
+	$(LD) -m z8001 -r -T /dev/stdin -o $@ $(INIT_OBJS) <<< $(LDSCRIPT)
+
+init.bin: init.merged.o $(COFF2AOUT)
+	$(COFF2AOUT) -o $@ $<
+
+$(COFF2AOUT): ../../../../Standalone/coff2aout.c
+	$(CC) -Wall -O2 -o $@ $<
 
 clean:
 	rm -f *.o *.coff *.bin

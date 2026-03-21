@@ -10,6 +10,9 @@
 ! C calling convention (stack-based, no -mregparms):
 !   Args on stack at rr14(#4), rr14(#6/8), etc.
 !   Return in r2 (16-bit) or rr2 (32-bit)
+!
+! Syscall numbers from Kernel/include/syscall_name.h:
+!   0 = _exit, 1 = open, 2 = close, 7 = read, 8 = write
 
 	.segm
 	.text
@@ -23,26 +26,38 @@ __exit:
 	sc	#0
 	halt
 
-! int write(int fd, const void *buf, int count)
-	.global	_write
-_write:
-	ld	r1, #4			! syscall 4 = write
-	clr	r2
-	ld	r3, rr14(#4)		! fd (16-bit → rr2 = 0:fd)
-	ldl	rr4, rr14(#6)		! buf (32-bit segmented ptr → rr4)
+! int open(const char *path, int flags)
+	.global	_open
+_open:
+	ld	r1, #1			! syscall 1 = open
+	ldl	rr2, rr14(#4)		! path (32-bit segmented ptr → rr2)
+	clr	r4
+	ld	r5, rr14(#8)		! flags (16-bit → rr4 = 0:flags)
 	clr	r6
-	ld	r7, rr14(#10)		! count (16-bit → rr6 = 0:count)
+	clr	r7			! mode = 0
 	sc	#0
 	ret
 
 ! int read(int fd, void *buf, int count)
 	.global	_read
 _read:
-	ld	r1, #3			! syscall 3 = read
+	ld	r1, #7			! syscall 7 = read
 	clr	r2
 	ld	r3, rr14(#4)		! fd
 	ldl	rr4, rr14(#6)		! buf
 	clr	r6
 	ld	r7, rr14(#10)		! count
+	sc	#0
+	ret
+
+! int write(int fd, const void *buf, int count)
+	.global	_write
+_write:
+	ld	r1, #8			! syscall 8 = write
+	clr	r2
+	ld	r3, rr14(#4)		! fd (16-bit → rr2 = 0:fd)
+	ldl	rr4, rr14(#6)		! buf (32-bit segmented ptr → rr4)
+	clr	r6
+	ld	r7, rr14(#10)		! count (16-bit → rr6 = 0:count)
 	sc	#0
 	ret

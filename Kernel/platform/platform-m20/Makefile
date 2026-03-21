@@ -33,7 +33,7 @@ image:
 	../../syscall_proc.o ../../syscall_other.o ../../mm.o ../../flat.o \
 	../../blk512.o ../../tty.o ../../devsys.o ../../usermem.o ../../syscall_fs2.o \
 	../../syscall_fs3.o ../../syscall_exec32.o ../../syscall_exec.o \
-	../../cpu-z8000/usermem_std-z8000.o devtty.o libc.o ../../malloc.o \
+	../../cpu-z8000/usermem_std-z8000.o devtty.o devhd.o libc.o ../../malloc.o \
 	> ../../fuzix.map
 	$(Z8KOCP) -j .text -O binary fuzix.bin fuzix.text.bin
 	$(Z8KOCP) -j .data -O binary fuzix.bin fuzix.data.bin

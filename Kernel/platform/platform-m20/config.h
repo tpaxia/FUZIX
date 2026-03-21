@@ -22,7 +22,8 @@
 #define CONFIG_PARENT_FIRST
 #define CONFIG_BANKS	(65536/512)
 
-#define CONFIG_LARGE_IO_DIRECT(x)	1
+/* Disabled: HD driver doesn't support rawflag=1 (direct I/O) yet */
+/* #define CONFIG_LARGE_IO_DIRECT(x)	1 */
 
 #define CONFIG_SPLIT_UDATA
 #define UDATA_SIZE	2048

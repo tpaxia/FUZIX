@@ -1,40 +1,37 @@
 ! Z8001 FUZIX user-space crt0
 !
-! Binary layout (a.out flat):
-!   File: [64-byte header] [text section]
-!   Memory after exec: [VDSO 0x00-0x0F] [gap 0x10-0x1F] [text @ 0x20+]
+! Binary layout must match 68000 convention:
+!   text[0x00..0x1F] = VDSO placeholder (overwritten by kernel)
+!   text[0x20+]      = actual code (entry point)
 !
 ! The exec loader reads a_text - 0x20 bytes from the file and
-! places them at u_codebase + 0x20. Code at text[0] ends up at
-! u_codebase + 0x20. So a_entry = 0x20 for entry at text[0].
+! writes them to codebase + 0x20. The VDSO at codebase + 0x00
+! is written by install_vdso.
 !
-! Stack is set up by the kernel. On entry, the stack contains:
-!   SP+0: argc (word)
-!   SP+2: argv pointer (long)
-!   SP+6: envp pointer (long)
+! Relocation offsets are from text[0] (including VDSO area),
+! so they naturally add up correctly with codebase + v.
 
 	.segm
 	.text
 	.global	_start
 	.global	___main
 
-! Entry point — code starts at text[0], loaded at u_codebase + 0x20
+! VDSO placeholder — kernel overwrites first 16 bytes
+	.space	32		! 0x20 bytes: 16 VDSO + 16 padding
+
+! Entry point at text[0x20]
 _start:
-	! Get argc, argv, envp from stack
+	! Stack set up by kernel. argc/argv/envp on stack.
 	ld	r2, @rr14		! argc
 	ldl	rr4, rr14(#2)		! argv
-	! Call main(argc, argv)
-	! Push args on stack (right to left)
-	pushl	@rr14, rr4		! argv
-	push	@rr14, r2		! argc
+	pushl	@rr14, rr4		! push argv
+	push	@rr14, r2		! push argc
 	call	_main
-	! Clean stack
-	addl	rr14, #6
+	addl	rr14, #6		! clean stack
 
 	! main returned — _exit(retval)
-	! retval in r2
-	ld	r3, r2			! status = main return
-	ld	r1, #0			! syscall 0 = _exit
+	ld	r3, r2
+	ld	r1, #0			! _exit
 	sc	#0
 	halt
 
