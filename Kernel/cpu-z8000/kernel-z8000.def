@@ -21,9 +21,9 @@
 #define U_DATA__U_ARGN3		36
 #define U_DATA__U_ISP		40
 #define U_DATA__U_TOP		44
-#define U_DATA__U_BREAK		46
-#define U_DATA__U_CODEBASE	50
-#define U_DATA__U_SIGVEC	54
+#define U_DATA__U_BREAK		48
+#define U_DATA__U_CODEBASE	52
+#define U_DATA__U_SIGVEC	56
 
 #define UBLOCK_SIZE		2048
 

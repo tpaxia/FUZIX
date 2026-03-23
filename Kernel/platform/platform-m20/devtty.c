@@ -65,7 +65,14 @@ int tty_carrier(uint_fast8_t minor)
 
 void tty_setup(uint_fast8_t minor, uint_fast8_t flags)
 {
-	/* TODO: configure baud rate via i8253 counter 0 */
+	struct tty *t = &ttydata[minor];
+	if (flags == 0) {
+		/* First open: set default termios */
+		t->termios.c_iflag = ICRNL | BRKINT;
+		t->termios.c_oflag = ONLCR | OPOST;
+		t->termios.c_cflag = CS8 | CREAD | CLOCAL | B9600;
+		t->termios.c_lflag = ISIG | ICANON | ECHO | ECHOE | ECHOK;
+	}
 }
 
 /*
@@ -79,4 +86,7 @@ void tty_interrupt(void)
 	st = in(TTY_CTRL);
 	if (st & USART_RXRDY)
 		tty_inproc(1, in(TTY_DATA));
+	/* Clear any overrun/framing/parity errors so RxRDY can fire again */
+	if (st & 0x38)
+		out(TTY_CTRL, 0x37);	/* command: RTS, DTR, error reset, RxEN, TxEN */
 }

@@ -24,8 +24,7 @@ int main(void)
 
 	for (;;) {
 		if (read(0, &c, 1) == 1) {
-			write(1, &c, 1);
-			if (c == '\r')
+			if (c == '\n')
 				write(1, nl, 3);
 		}
 	}
