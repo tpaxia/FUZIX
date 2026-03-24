@@ -94,7 +94,7 @@ u_block udata_block[PTABSIZE];
 void install_vdso(void)
 {
 	extern uint8_t vdso[];
-	memcpy((void *)udata.u_codebase, &vdso, 0x10);
+	memcpy((void *)udata.u_codebase, &vdso, 0x20);
 }
 
 uint8_t plt_udata_set(ptptr p)

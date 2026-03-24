@@ -231,9 +231,105 @@ sysc_sig:
 	iret
 
 return_via_signal:
-	/* TODO: signal delivery */
+	/*
+	 * Signal delivery from syscall return.
+	 *
+	 * At entry:
+	 *   rr2 = syscall return value
+	 *   rr10 = udata pointer, r11 = udata offset
+	 *   Kernel stack (rr14 ->):
+	 *     +0:  saved rr10 (4)
+	 *     +4:  SC identifier (2)
+	 *     +6:  FCW (2)
+	 *     +8:  PC seg (2) = original user return
+	 *     +10: PC off (2)
+	 *
+	 * Signal frame on user stack (20 bytes):
+	 *     +0:  VDSO unwind addr seg (2)
+	 *     +2:  VDSO unwind addr off (2)
+	 *     +4:  signal number (2)
+	 *     +6:  padding (2)
+	 *     +8:  saved r2 (2)
+	 *     +10: saved r3 (2)
+	 *     +12: original PC seg (2)
+	 *     +14: original PC off (2)
+	 *     +16: old NSP seg (2)
+	 *     +18: old NSP off (2)
+	 */
+
+	/* Save syscall return value on kernel stack */
+	pushl	@rr14, rr2
+
+	/* Read signal number and clear u_cursig */
+	ldb	rh0, (0x82000000+U_DATA__U_CURSIG)(r11)
+	subb	rl0, rl0
+	ldb	(0x82000000+U_DATA__U_CURSIG)(r11), #0
+
+	/* Get handler: u_sigvec[sig] (4 bytes per entry) */
+	ld	r1, r0
+	sla	r1, #2
+	ldl	rr4, rr10
+	add	r5, #U_DATA__U_SIGVEC
+	add	r5, r1
+	ldl	rr6, @rr4		! rr6 = handler address
+
+	/* Get current user NSP */
+	ldctl	r8, nspseg
+	ldctl	r9, nspoff		! rr8 = old user NSP
+
+	/* Build signal frame (push downward using rr4 as write ptr) */
+	ldl	rr4, rr8
+
+	/* old NSP */
+	sub	r5, #2
+	ld	@rr4, r9
+	sub	r5, #2
+	ld	@rr4, r8
+
+	/* original PC (from IRET frame: saved_rr2 at +0, saved_rr10 at +4,
+	   identifier at +8, FCW at +10, PC_seg at +12, PC_off at +14) */
+	ld	r1, rr14(#14)
+	sub	r5, #2
+	ld	@rr4, r1
+	ld	r1, rr14(#12)
+	sub	r5, #2
+	ld	@rr4, r1
+
+	/* saved r3, r2 (syscall return, at rr14+0..+3) */
+	ld	r1, rr14(#2)
+	sub	r5, #2
+	ld	@rr4, r1
+	ld	r1, rr14(#0)
+	sub	r5, #2
+	ld	@rr4, r1
+
+	/* signal number + padding */
+	sub	r5, #2
+	ld	@rr4, #0
+	sub	r5, #2
+	ld	@rr4, r0
+
+	/* return address = codebase + 4 (VDSO signal unwind) */
+	ldl	rr2, rr10(#U_DATA__U_CODEBASE)
+	add	r3, #4
+	sub	r5, #2
+	ld	@rr4, r3
+	sub	r5, #2
+	ld	@rr4, r2
+
+	/* Update user NSP */
+	ldctl	nspseg, r4
+	ldctl	nspoff, r5
+
+	/* Patch IRET frame PC to signal handler */
+	ld	rr14(#12), r6
+	ld	rr14(#14), r7
+
+	/* Discard saved rr2, restore rr10, IRET to handler */
+	popl	rr2, @rr14
 	popl	rr10, @rr14
 	iret
+
 
 /*
  *	Execute a user process
@@ -293,11 +389,18 @@ _doexec:
  *	Provides the syscall entry point and signal return stub
  */
 _vdso:
-	sc	#0			! system call trap
+	sc	#0			! system call trap (offset 0, 4 bytes)
 	ret
-	/* signal unwind */
-	/* TODO: signal frame unwinding */
-	ret
+_vdso_sigreturn:			! signal unwind (offset 4)
+	! Entry: handler just did 'ret', popping the return address.
+	! Stack: [sig(4)] [r2(2)] [r3(2)] [PC_seg(2)] [PC_off(2)] [old_NSP(4)]
+	add	r15, #4			! skip signal number arg
+	pop	r2, @rr14		! restore syscall return r2
+	pop	r3, @rr14		! restore syscall return r3
+	popl	rr4, @rr14		! original PC into rr4
+	popl	rr6, @rr14		! old NSP into rr6
+	ldl	rr14, rr6		! restore user stack pointer
+	jp	@rr4			! return to interrupted code
 
 /*
  *	Exception handlers
