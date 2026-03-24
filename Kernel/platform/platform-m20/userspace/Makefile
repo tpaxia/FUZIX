@@ -15,7 +15,7 @@ LDSCRIPT = \
 	  .bss : { *(.bss) *(COMMON) } \
 	}"
 
-all: init.bin
+all: init.bin hello.bin
 
 crt0.o: crt0.S
 	$(AS) -z8001 -o $@ $<
@@ -32,6 +32,17 @@ init.merged.o: $(INIT_OBJS)
 	$(LD) -m z8001 -r -T /dev/stdin -o $@ $(INIT_OBJS) <<< $(LDSCRIPT)
 
 init.bin: init.merged.o $(COFF2AOUT)
+	$(COFF2AOUT) -o $@ $<
+
+hello.o: hello.c
+	$(XGCC) $(CFLAGS) -c -o $@ $<
+
+HELLO_OBJS = crt0.o hello.o syscalls.o
+
+hello.merged.o: $(HELLO_OBJS)
+	$(LD) -m z8001 -r -T /dev/stdin -o $@ $(HELLO_OBJS) <<< $(LDSCRIPT)
+
+hello.bin: hello.merged.o $(COFF2AOUT)
 	$(COFF2AOUT) -o $@ $<
 
 $(COFF2AOUT): ../../../../Standalone/coff2aout.c

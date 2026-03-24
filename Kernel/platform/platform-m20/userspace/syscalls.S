@@ -85,6 +85,28 @@ _kill:
 	sc	#0
 	ret
 
+! int execve(const char *path, char *argv[], char *envp[])
+	.global	_execve
+_execve:
+	ld	r1, #23			! syscall 23 = execve
+	ldl	rr2, rr14(#4)		! path (32-bit ptr)
+	ldl	rr4, rr14(#8)		! argv (32-bit ptr)
+	ldl	rr6, rr14(#12)		! envp (32-bit ptr)
+	sc	#0
+	ret
+
+! int waitpid(int pid, int *status, int options)
+	.global	_waitpid
+_waitpid:
+	ld	r1, #55			! syscall 55 = waitpid
+	clr	r2
+	ld	r3, rr14(#4)		! pid
+	ldl	rr4, rr14(#6)		! status ptr (32-bit)
+	clr	r6
+	ld	r7, rr14(#10)		! options
+	sc	#0
+	ret
+
 ! int write(int fd, const void *buf, int count)
 	.global	_write
 _write:

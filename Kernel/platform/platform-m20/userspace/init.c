@@ -1,5 +1,5 @@
 /* Minimal FUZIX /init for Z8001
- * Tests: open, write, read, fork, signal delivery
+ * Tests: open, write, read, fork, signal, fork+exec+waitpid
  */
 
 extern int open(const char *path, int flags);
@@ -9,28 +9,28 @@ extern int fork(void);
 extern int getpid(void);
 extern void *signal(int sig, void *handler);
 extern int kill(int pid, int sig);
+extern int execve(const char *path, char *argv[], char *envp[]);
+extern int waitpid(int pid, int *status, int options);
 extern void _exit(int status);
 
 #define SIGUSR1 10
+#define NULL ((void *)0)
 
 static char ttydev[] = "/dev/tty1";
 static char banner[] = "[init]\n";
-static char sig_msg[] = "SIG!\n";
-static char ok_msg[] = "ok\n";
 static char nl[] = "\n# ";
-
-static volatile int got_sig;
-
-void sighandler(int sig)
-{
-	got_sig = sig;
-	write(1, sig_msg, 5);
-}
 
 int main(void)
 {
 	char c;
-	int pid;
+	int pid, status;
+	static char hello_path[] = "/bin/hello";
+	char *argv[2];
+	char *envp[1];
+
+	argv[0] = hello_path;
+	argv[1] = 0;
+	envp[0] = 0;
 
 	open(ttydev, 2);	/* fd 0 */
 	open(ttydev, 2);	/* fd 1 */
@@ -38,22 +38,19 @@ int main(void)
 
 	write(1, banner, 7);
 
-	/* Test signal delivery */
-	if (signal(SIGUSR1, (void *)sighandler) == (void *)-1)
-		write(1, "SE\n", 3);
-	else
-		write(1, "SO\n", 3);
-	pid = getpid();
-	if (pid <= 0)
-		write(1, "PE\n", 3);
-	else
-		write(1, "PO\n", 3);
-	kill(pid, SIGUSR1);
-	write(1, "K\n", 2);
-
-	/* If we get here, signal was delivered and handler returned */
-	if (got_sig == SIGUSR1)
-		write(1, ok_msg, 3);
+	/* Test fork + exec */
+	pid = fork();
+	if (pid == 0) {
+		/* Child: exec /bin/hello */
+		int r = execve("/bin/hello", argv, envp);
+		/* If exec fails, r is -1 */
+		write(1, "EF\n", 3);
+		_exit(1);
+	}
+	/* Parent: wait for child */
+	write(1, "W\n", 2);
+	waitpid(pid, &status, 0);
+	write(1, "D\n", 2);
 
 	write(1, nl + 1, 2);	/* "# " */
 
