@@ -50,6 +50,13 @@ _read:
 	sc	#0
 	ret
 
+! int fork(void)
+	.global	_fork
+_fork:
+	ld	r1, #32			! syscall 32 = _fork
+	sc	#0
+	ret
+
 ! int write(int fd, const void *buf, int count)
 	.global	_write
 _write:

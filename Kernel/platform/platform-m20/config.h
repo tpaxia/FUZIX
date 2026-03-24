@@ -27,6 +27,7 @@
 /* #define CONFIG_LARGE_IO_DIRECT(x)	1 */
 
 #define CONFIG_SPLIT_UDATA
+#define CONFIG_STACKSIZE 2048
 #define UDATA_SIZE	2048
 #define UDATA_BLKS	4
 
@@ -58,7 +59,7 @@
 #define plt_copyright()
 
 /* Process table sizes */
-#define PTABSIZE	16
+#define PTABSIZE	8
 #define OFTSIZE		24
 #define ITABSIZE	40
 #define UFTSIZE		16

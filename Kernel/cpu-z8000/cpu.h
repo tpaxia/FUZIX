@@ -59,7 +59,9 @@ register struct u_data *udata_ptr asm ("r10");
 
 #define BIG_ENDIAN
 
+#ifndef CONFIG_STACKSIZE
 #define CONFIG_STACKSIZE	1024
+#endif
 
 #define __packed		__attribute__((packed))
 #define barrier()		asm volatile("":::"memory")
