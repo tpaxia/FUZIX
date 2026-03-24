@@ -57,6 +57,34 @@ _fork:
 	sc	#0
 	ret
 
+! int getpid(void)
+	.global	_getpid
+_getpid:
+	ld	r1, #18			! syscall 18 = getpid
+	sc	#0
+	ret
+
+! void *signal(int sig, void *handler)
+	.global	_signal
+_signal:
+	ld	r1, #35			! syscall 35 = signal
+	clr	r2
+	ld	r3, rr14(#4)		! sig (16-bit)
+	ldl	rr4, rr14(#6)		! handler (32-bit pointer)
+	sc	#0
+	ret
+
+! int kill(int pid, int sig)
+	.global	_kill
+_kill:
+	ld	r1, #39			! syscall 39 = kill
+	clr	r2
+	ld	r3, rr14(#4)		! pid
+	clr	r4
+	ld	r5, rr14(#6)		! sig
+	sc	#0
+	ret
+
 ! int write(int fd, const void *buf, int count)
 	.global	_write
 _write:

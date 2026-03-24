@@ -261,8 +261,8 @@ return_via_signal:
 	pushl	@rr14, rr2
 
 	/* Read signal number and clear u_cursig */
-	ldb	rh0, (0x82000000+U_DATA__U_CURSIG)(r11)
-	subb	rl0, rl0
+	ldb	rl0, (0x82000000+U_DATA__U_CURSIG)(r11)
+	subb	rh0, rh0
 	ldb	(0x82000000+U_DATA__U_CURSIG)(r11), #0
 
 	/* Get handler: u_sigvec[sig] (4 bytes per entry) */
