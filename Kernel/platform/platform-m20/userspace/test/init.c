@@ -20,6 +20,14 @@ static char ttydev[] = "/dev/tty1";
 static char banner[] = "[init]\n";
 static char nl[] = "\n# ";
 
+static volatile int got_sig = 0;  /* must be in .data, not .bss — see gcc-z8k-short-da-bss-bug */
+
+void sighandler(int sig)
+{
+	got_sig = sig;
+	write(1, "SIG!\n", 5);
+}
+
 int main(void)
 {
 	char c;
@@ -37,6 +45,15 @@ int main(void)
 	open(ttydev, 2);	/* fd 2 */
 
 	write(1, banner, 7);
+
+	/* Test signal */
+	signal(SIGUSR1, (void *)sighandler);
+	pid = getpid();
+	kill(pid, SIGUSR1);
+	if (got_sig == SIGUSR1)
+		write(1, "sig ok\n", 7);
+	else
+		write(1, "sig FAIL\n", 9);
 
 	/* Test fork + exec */
 	pid = fork();

@@ -12,7 +12,7 @@ LDSCRIPT = \
 	SECTIONS { \
 	  .text 0 : { *(.text .text.*) } \
 	  .data SIZEOF(.text) : { *(.data .rodata .rodata.*) } \
-	  .bss : { *(.bss) *(COMMON) } \
+	  .bss SIZEOF(.text) + SIZEOF(.data) : { *(.bss) *(COMMON) } \
 	}"
 
 all: init.bin hello.bin
@@ -23,7 +23,7 @@ crt0.o: crt0.S
 syscalls.o: syscalls.S
 	$(AS) -z8001 -o $@ $<
 
-init.o: init.c
+init.o: test/init.c
 	$(XGCC) $(CFLAGS) -c -o $@ $<
 
 INIT_OBJS = crt0.o init.o syscalls.o
@@ -34,7 +34,7 @@ init.merged.o: $(INIT_OBJS)
 init.bin: init.merged.o $(COFF2AOUT)
 	$(COFF2AOUT) -o $@ $<
 
-hello.o: hello.c
+hello.o: test/hello.c
 	$(XGCC) $(CFLAGS) -c -o $@ $<
 
 HELLO_OBJS = crt0.o hello.o syscalls.o

@@ -76,6 +76,12 @@ _switchin:
 	/* Update shadow */
 	ldl	_udata_shadow, rr10
 
+	/* Restore kernel SP */
+	ldl	rr14, rr10(#U_DATA__U_SP)
+
+	/* Mark process as running */
+	ldb	(0x82000000+P_TAB__P_STATUS_OFFSET)(r3), #P_RUNNING
+
 	/* Swap user memory if needed (for fork copy-on-write) */
 	clr	r4
 	clr	r5			! death = 0
@@ -84,15 +90,8 @@ _switchin:
 	call	_pagemap_switch
 	addl	rr14, #8		! clean args
 
-	/* Reload rr2 (p) and rr10 — pagemap_switch may have clobbered them */
+	/* Reload rr10 — pagemap_switch may have clobbered it */
 	ldl	rr10, _udata_shadow
-	ldl	rr2, rr10(#U_DATA__U_PTAB)
-
-	/* Restore kernel SP */
-	ldl	rr14, rr10(#U_DATA__U_SP)
-
-	/* Mark process as running */
-	ldb	(0x82000000+P_TAB__P_STATUS_OFFSET)(r3), #P_RUNNING
 
 	/* Restore callee-saved registers */
 	popl	rr12, @rr14
@@ -121,45 +120,27 @@ switchinfail:
  *	dofork(ptptr child)
  *	child (32-bit ptr) at rr14(#4)
  *
- *	Strategy: save registers like switchout does, then copy
- *	the parent's entire udata+stack to the child. The child's
- *	stack is an exact copy of the parent's, including the
- *	switchout-style register save frame. When the child is
- *	later scheduled by switchin, it will restore the registers,
- *	return through the same call chain as the parent, and
- *	dofork returns 0 (because switchin always returns 0).
- *
- *	The parent gets the child PID from dofork's return value.
- *	The child gets 0 from switchin's return value.
+ *	Based on the 68000 flat port approach:
+ *	1. Copy parent udata block to child
+ *	2. Call makeproc to set up child p_tab
+ *	3. Build a forkreturn frame at the top of the child's stack
+ *	   that does IRET directly to user space (bypassing unix_syscall)
+ *	4. Return child PID to parent
  */
 _dofork:
-	/*
-	 * Save callee-saved registers exactly like switchout does.
-	 * This creates the frame that switchin will pop.
-	 */
-	ldctl	r0, nspseg
-	ldctl	r1, nspoff
-	pushl	@rr14, rr0		! user SP
 	pushl	@rr14, rr8
-	pushl	@rr14, rr10		! udata ptr
 	pushl	@rr14, rr12
 
-	/* Save this stack pointer in parent's udata */
-	ldl	rr10(#U_DATA__U_SP), rr14
-
-	/* Get child p_tab from original arg (adjusted for 4 pushes = +16) */
-	ldl	rr2, rr14(#20)		! child p_tab
+	ldl	rr2, rr14(#12)		! child p_tab (adjusted for 2 pushes)
+	pushl	@rr14, rr2		! save child p_tab
 
 	/* Get child udata pointer */
 	ldl	rr4, rr2(#P_TAB__P_UDATA_OFFSET)
 
 	/*
 	 * Copy parent udata block to child (UBLOCK_SIZE bytes).
-	 * This copies everything: the u_data struct AND the kernel stack
-	 * including the register save frame we just created.
 	 * Source = rr10 (parent udata), dest = rr4 (child udata).
 	 */
-	pushl	@rr14, rr2		! save child p_tab
 	ldl	rr8, rr10		! rr8 = source (parent udata)
 	ldl	rr12, rr4		! rr12 = dest (child udata)
 	ld	r2, #UBLOCK_SIZE
@@ -172,40 +153,11 @@ _copy_udata:
 	jr	nz, _copy_udata
 
 	/*
-	 * The child's u_sp now points into the PARENT's stack (because
-	 * we copied u_sp as-is). Fix it to point to the same offset
-	 * within the CHILD's udata block.
-	 *
-	 * child_u_sp = child_udata + (parent_u_sp - parent_udata)
-	 */
-	popl	rr2, @rr14		! child p_tab
-	pushl	@rr14, rr2		! save again
-	ldl	rr4, rr2(#P_TAB__P_UDATA_OFFSET)	! child udata
-	ldl	rr8, rr10(#U_DATA__U_SP)	! parent u_sp
-	! offset = parent_u_sp - parent_udata (just the offset difference)
-	ld	r0, r9			! parent SP offset
-	sub	r0, r11			! minus parent udata offset = delta
-	ld	r1, r5			! child udata offset
-	add	r1, r0			! child udata offset + delta
-	ld	r0, r4			! child udata segment
-	! rr0 = child's u_sp
-	ldl	rr4(#U_DATA__U_SP), rr0
-
-	/*
-	 * Patch the saved rr10 in the child's switchout frame.
-	 * The frame has [rr12][rr10][rr8][rr0][retaddr] growing up.
-	 * rr10 is at u_sp + 4. It currently has the parent's udata
-	 * pointer; fix it to the child's.
-	 */
-	ldl	rr8, rr0		! rr8 = child u_sp
-	ldl	rr8(#4), rr4		! store child udata ptr at u_sp+4
-
-	/*
 	 * Call makeproc(child_ptab, child_udata)
 	 */
 	popl	rr2, @rr14		! child p_tab
 	pushl	@rr14, rr2		! save again
-	ldl	rr4, rr2(#P_TAB__P_UDATA_OFFSET)
+	ldl	rr4, rr2(#P_TAB__P_UDATA_OFFSET)	! child udata
 	pushl	@rr14, rr4		! arg 2: child udata
 	pushl	@rr14, rr2		! arg 1: child p_tab
 	call	_makeproc
@@ -214,23 +166,126 @@ _copy_udata:
 	/* Reload parent udata pointer */
 	ldl	rr10, _udata_shadow
 
-	/* Get child PID */
+	/*
+	 * Build a forkreturn frame in the child's udata stack.
+	 * Like the 68000 port: the child will IRET directly to user
+	 * space from forkreturn, bypassing unix_syscall.
+	 *
+	 * The parent's IRET frame from the SC instruction is at
+	 * the top of the udata block:
+	 *   udata+UBLOCK_SIZE-8: identifier (2)
+	 *   udata+UBLOCK_SIZE-6: FCW (2)
+	 *   udata+UBLOCK_SIZE-4: PC seg (2)
+	 *   udata+UBLOCK_SIZE-2: PC off (2)
+	 *
+	 * We build this in the child's stack (growing down from top):
+	 *   [IRET frame: identifier, FCW, PC_seg, PC_off] (8 bytes)
+	 *   [saved rr10 for popl before iret] (4 bytes)
+	 *   [return address = forkreturn] (4 bytes)
+	 *   [user SP seg:off] (4 bytes)
+	 *   [dummy rr8] (4 bytes)
+	 *   [saved rr10 = child udata ptr] (4 bytes)
+	 *   [dummy rr12] (4 bytes)
+	 *   ← child u_sp points here
+	 *
+	 * switchin pops: rr12, rr10, rr8, rr0(userSP), then ret→forkreturn
+	 * forkreturn: clears regs, pops rr10, iret → user space
+	 */
+	popl	rr2, @rr14		! child p_tab
+	ldl	rr4, rr2(#P_TAB__P_UDATA_OFFSET)	! child udata
+	pushl	@rr14, rr2		! save child p_tab
+
+	/* rr8 = pointer to build the frame, start at child udata + UBLOCK_SIZE */
+	ldl	rr8, rr4
+	add	r9, #UBLOCK_SIZE
+
+	/*
+	 * Copy IRET frame from parent's stack top.
+	 * Parent IRET at rr10 + UBLOCK_SIZE - 8 (copied to child already,
+	 * so read from child at rr4 + UBLOCK_SIZE - 8).
+	 * Actually, we already copied the whole block — the IRET frame
+	 * is already at the right place in the child's block.
+	 * rr8 points to child udata + UBLOCK_SIZE = top.
+	 * The IRET frame is at rr8 - 8.
+	 * We leave it in place and build below it.
+	 */
+
+	/* Below the IRET frame: push saved rr10 for the popl before iret */
+	sub	r9, #8			! skip past IRET frame
+	sub	r9, #2
+	ld	@rr8, r5		! child udata offset
+	sub	r9, #2
+	ld	@rr8, r4		! child udata segment
+
+	/* Push return address = forkreturn */
+	lda	rr12, _forkreturn
+	sub	r9, #2
+	ld	@rr8, r13		! forkreturn offset
+	sub	r9, #2
+	ld	@rr8, r12		! forkreturn segment
+
+	/* Push user SP (copy from parent's NSP) */
+	ldctl	r0, nspseg
+	ldctl	r1, nspoff
+	sub	r9, #2
+	ld	@rr8, r1		! NSP offset
+	sub	r9, #2
+	ld	@rr8, r0		! NSP segment
+
+	/* Push dummy rr8 */
+	sub	r9, #4
+	ldl	rr12, #0
+	ldl	@rr8, rr12
+
+	/* Push child rr10 (udata pointer) */
+	sub	r9, #2
+	ld	@rr8, r5		! child udata offset
+	sub	r9, #2
+	ld	@rr8, r4		! child udata segment
+
+	/* Push dummy rr12 */
+	sub	r9, #4
+	ldl	rr12, #0
+	ldl	@rr8, rr12
+
+	/* Set child's u_sp to current rr8 position */
+	ldl	rr4(#U_DATA__U_SP), rr8
+
+	/* Mark child not in syscall */
+	ldb	(0x82000000+U_DATA__U_INSYS)(r5), #0
+
+	/* Return child PID to parent */
 	popl	rr2, @rr14		! child p_tab
 	ld	r2, rr2(#P_TAB__P_PID_OFFSET)
-	pushl	@rr14, rr2		! save PID
-
-	/* Clear child's u_insys so it returns to user mode */
-	! (child udata already has a copy, but clear it explicitly)
-
-	/* Restore our saved registers (same as switchin does) */
-	popl	rr2, @rr14		! get saved PID into r2
-	popl	rr12, @rr14
-	popl	rr10, @rr14
-	popl	rr8, @rr14
-	popl	rr0, @rr14		! user SP
-	ldctl	nspseg, r0
-	ldctl	nspoff, r1
 
 	clr	_runticks
-	! r2 = child PID (saved earlier)
+
+	popl	rr12, @rr14
+	popl	rr8, @rr14
 	ret
+
+/*
+ *	Child process resumes here from switchin.
+ *	switchin popped: rr12, rr10(child udata), rr8, rr0(user SP)
+ *	and set NSP. Then ret jumped here.
+ *
+ *	Above us on the stack: [saved rr10][IRET frame]
+ *	We pop rr10 and IRET directly to user space with r2=0.
+ */
+_forkreturn:
+	clr	_runticks
+	clr	r0
+	clr	r1
+	clr	r2			! fork returns 0 to child
+	clr	r3
+	clr	r4
+	clr	r5
+	clr	r6
+	clr	r7
+	clr	r8
+	clr	r9
+	! rr10 will be popped below
+	clr	r12
+	clr	r13
+	popl	rr10, @rr14		! restore rr10 from frame
+	iret				! return to user space

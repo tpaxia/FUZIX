@@ -43,14 +43,14 @@ Entry state:
 - Kernel stack: [saved_rr10][SC identifier][FCW][PC_seg][PC_off]
 
 Steps:
-1. Save rr2 (syscall return) on kernel stack
+1. Save rr2 (syscall return) and rr8 (callee-saved) on kernel stack
 2. Read signal number from `u_cursig`, clear it
 3. Look up handler address from `u_sigvec[sig]`
-4. Read current user NSP from nspseg/nspoff
+4. Read current user NSP into rr8 via ldctl (clobbers rr8, hence the save)
 5. Build signal frame on user stack (write downward using segmented pointer)
 6. Update NSP to point to top of signal frame
 7. Patch the IRET frame's PC to the signal handler address
-8. Discard saved rr2, restore rr10, IRET
+8. Restore rr8, discard saved rr2, restore rr10, IRET
 
 IRET switches to normal mode and jumps to the signal handler.
 
@@ -83,12 +83,17 @@ After the unwind:
 - rr14 (NSP) is restored to the pre-signal value
 - Execution continues at the instruction after the original syscall
 
-## Register Clobbering
+## Register Preservation
+
+The signal delivery code uses R8/R9 to read the user NSP (`ldctl r8, nspseg;
+ldctl r9, nspoff`). These are callee-saved registers that user code expects
+to be preserved across syscalls. The delivery code saves rr8 on the kernel
+stack before clobbering it and restores it before IRET, so the user's R8/R9
+values survive signal delivery.
 
 The VDSO unwind clobbers r4, r5, r6, r7 (used as temporaries for PC and
 old NSP). These are caller-saved registers, so this is safe when returning
-from a syscall. For signals delivered during interrupt return (not yet
-implemented), additional register saving would be needed.
+from a syscall.
 
 ## Limitations
 

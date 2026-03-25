@@ -255,10 +255,20 @@ return_via_signal:
 	 *     +14: original PC off (2)
 	 *     +16: old NSP seg (2)
 	 *     +18: old NSP off (2)
+	 *
+	 * Kernel stack after saves (rr14 ->):
+	 *     +0:  saved rr8 (4)   — callee-saved, clobbered for NSP read
+	 *     +4:  saved rr2 (4)   — syscall return value
+	 *     +8:  saved rr10 (4)
+	 *     +12: SC identifier (2)
+	 *     +14: FCW (2)
+	 *     +16: PC seg (2)
+	 *     +18: PC off (2)
 	 */
 
-	/* Save syscall return value on kernel stack */
+	/* Save syscall return value and callee-saved rr8 on kernel stack */
 	pushl	@rr14, rr2
+	pushl	@rr14, rr8
 
 	/* Read signal number and clear u_cursig */
 	ldb	rl0, (0x82000000+U_DATA__U_CURSIG)(r11)
@@ -286,20 +296,20 @@ return_via_signal:
 	sub	r5, #2
 	ld	@rr4, r8
 
-	/* original PC (from IRET frame: saved_rr2 at +0, saved_rr10 at +4,
-	   identifier at +8, FCW at +10, PC_seg at +12, PC_off at +14) */
-	ld	r1, rr14(#14)
+	/* original PC (from IRET frame: rr8 at +0, rr2 at +4, rr10 at +8,
+	   identifier at +12, FCW at +14, PC_seg at +16, PC_off at +18) */
+	ld	r1, rr14(#18)
 	sub	r5, #2
 	ld	@rr4, r1
-	ld	r1, rr14(#12)
+	ld	r1, rr14(#16)
 	sub	r5, #2
 	ld	@rr4, r1
 
-	/* saved r3, r2 (syscall return, at rr14+0..+3) */
-	ld	r1, rr14(#2)
+	/* saved r3, r2 (syscall return, at rr14+4..+7) */
+	ld	r1, rr14(#6)
 	sub	r5, #2
 	ld	@rr4, r1
-	ld	r1, rr14(#0)
+	ld	r1, rr14(#4)
 	sub	r5, #2
 	ld	@rr4, r1
 
@@ -322,10 +332,11 @@ return_via_signal:
 	ldctl	nspoff, r5
 
 	/* Patch IRET frame PC to signal handler */
-	ld	rr14(#12), r6
-	ld	rr14(#14), r7
+	ld	rr14(#16), r6
+	ld	rr14(#18), r7
 
-	/* Discard saved rr2, restore rr10, IRET to handler */
+	/* Restore rr8 (callee-saved), discard saved rr2, restore rr10, IRET */
+	popl	rr8, @rr14
 	popl	rr2, @rr14
 	popl	rr10, @rr14
 	iret
@@ -341,7 +352,7 @@ _doexec:
 	ldl	rr2, rr14(#4)		! entry point from stack
 
 	/* Reset supervisor stack to top of udata block */
-	ldl	rr14, _udata_ptr_seg		! load segmented SP
+	ldl	rr14, _udata_shadow		! load segmented SP from current udata
 	add	r15, #UBLOCK_SIZE
 
 	ldb	_kernel_flag, #0
