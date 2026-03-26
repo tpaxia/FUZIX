@@ -232,7 +232,8 @@ _copy_udata:
 	sub	r9, #2
 	ld	@rr8, r0		! NSP segment
 
-	/* Push dummy rr8 */
+	/* Push dummy rr8 (user's r8-r13 are saved/restored by the
+	 * userspace _fork wrapper on the user stack, not here) */
 	sub	r9, #4
 	ldl	rr12, #0
 	ldl	@rr8, rr12
@@ -282,10 +283,7 @@ _forkreturn:
 	clr	r5
 	clr	r6
 	clr	r7
-	clr	r8
-	clr	r9
+	! r8-r13 are callee-saved: restored by switchin from frame
 	! rr10 will be popped below
-	clr	r12
-	clr	r13
 	popl	rr10, @rr14		! restore rr10 from frame
 	iret				! return to user space

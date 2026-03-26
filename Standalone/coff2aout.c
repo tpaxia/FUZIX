@@ -136,6 +136,8 @@ int main(int argc, char **argv)
 	uint32_t text_relptr = 0;
 	uint16_t text_nreloc = 0;
 	uint32_t data_size = 0, data_scnptr = 0;
+	uint32_t data_relptr = 0;
+	uint16_t data_nreloc = 0;
 	uint32_t bss_size = 0;
 	int has_text = 0, has_data = 0, has_bss = 0;
 
@@ -174,6 +176,8 @@ int main(int argc, char **argv)
 		} else if (s_flags & STYP_DATA) {
 			data_size = s_size;
 			data_scnptr = s_scnptr;
+			data_relptr = s_relptr;
+			data_nreloc = s_nreloc;
 			has_data = 1;
 		} else if (s_flags & STYP_BSS) {
 			bss_size = s_size;
@@ -215,7 +219,7 @@ int main(int argc, char **argv)
 	uint32_t symoff = get32(buf + 8);	/* f_symptr */
 	uint32_t nsyms = get32(buf + 12);	/* f_nsyms */
 
-	/* Process relocations: keep only R_IMM32 from .text */
+	/* Process relocations: R_IMM32 from .text and .data */
 	for (int i = 0; i < text_nreloc; i++) {
 		uint32_t roff = text_relptr + i * RELSZ;
 		if (roff + RELSZ > (uint32_t)fsize)
@@ -247,6 +251,37 @@ int main(int argc, char **argv)
 			add_reloc(final_offset);
 		} else if (verbose) {
 			printf("  skip reloc @0x%04x type 0x%02x\n", r_vaddr, r_type);
+		}
+	}
+
+	/* Process relocations from .data section */
+	for (int i = 0; i < data_nreloc; i++) {
+		uint32_t roff = data_relptr + i * RELSZ;
+		if (roff + RELSZ > (uint32_t)fsize)
+			die("data relocation beyond EOF");
+		uint8_t *rp = buf + roff;
+		uint32_t r_vaddr = get32(rp + 0);
+		uint32_t r_symndx = get32(rp + 4);
+		uint16_t r_type = get16(rp + 12);
+
+		if (r_type == R_IMM32) {
+			if (r_symndx >= nsyms)
+				die("data relocation symbol index out of range");
+			uint8_t *sym = buf + symoff + r_symndx * 18;
+			uint32_t sym_value = get32(sym + 8);
+			/* Data reloc vaddr is already absolute (includes text offset)
+			 * because the linker script places .data at SIZEOF(.text) */
+			uint32_t final_offset = r_vaddr;
+			if (final_offset + 3 >= image_size)
+				die("data relocation offset out of range");
+			image[final_offset]     = (sym_value >> 24) & 0xff;
+			image[final_offset + 1] = (sym_value >> 16) & 0xff;
+			image[final_offset + 2] = (sym_value >> 8) & 0xff;
+			image[final_offset + 3] = sym_value & 0xff;
+			if (verbose)
+				printf("  data reloc @0x%04x sym[%u]=0x%08x\n",
+				       final_offset, r_symndx, sym_value);
+			add_reloc(final_offset);
 		}
 	}
 

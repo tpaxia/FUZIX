@@ -50,11 +50,21 @@ _read:
 	sc	#0
 	ret
 
-! int fork(void)
+! int fork(void) — kernel _fork(uint16_t flags, void *addr)
+! Save callee-saved regs on user stack: the child gets a copy
+! of the user stack and pops them on return from fork.
 	.global	_fork
 _fork:
+	pushl	@rr14, rr8
+	pushl	@rr14, rr12
 	ld	r1, #32			! syscall 32 = _fork
+	clr	r2
+	clr	r3			! flags = 0
+	clr	r4
+	clr	r5			! addr = NULL
 	sc	#0
+	popl	rr12, @rr14
+	popl	rr8, @rr14
 	ret
 
 ! int getpid(void)
