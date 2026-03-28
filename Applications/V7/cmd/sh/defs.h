@@ -292,7 +292,7 @@ void blokinit(void);
 ADDRESS alloc(POS nbytes);
 extern void addblok(POS reqd);
 extern void sh_free(void *ap);
-extern int chkbptr(BLKPTR ptr);
+extern void chkbptr(BLKPTR ptr);
 /* builtin.c */
 extern int builtin(int argn, char * *cmd);
 /* cmd.c */

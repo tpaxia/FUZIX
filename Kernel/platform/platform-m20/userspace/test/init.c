@@ -1,4 +1,4 @@
-/* Minimal FUZIX /init for Z8001 — spawn /bin/test */
+/* Minimal FUZIX /init for Z8001 — spawn /bin/sh */
 
 extern int open(const char *path, int flags);
 extern int write(int fd, const void *buf, int count);
@@ -12,7 +12,7 @@ static char ttydev[] = "/dev/tty1";
 int main(void)
 {
 	int pid, status;
-	static char sh_path[] = "/bin/test";
+	static char sh_path[] = "/bin/sh";
 	char *argv[2];
 	char *envp[1];
 
@@ -29,7 +29,7 @@ int main(void)
 	for (;;) {
 		pid = fork();
 		if (pid == 0) {
-			execve("/bin/test", argv, envp);
+			execve("/bin/sh", argv, envp);
 			write(1, "no sh\n", 6);
 			_exit(1);
 		}

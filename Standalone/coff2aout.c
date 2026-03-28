@@ -28,6 +28,7 @@
 
 /* Z8k relocation types from include/coff/z8k.h */
 #define R_IMM32		0x11
+#define R_IMM32_NORELAX	0x31
 
 /* COFF structure sizes from include/coff/external.h and z8k.h */
 #define FILHSZ		20
@@ -231,7 +232,7 @@ int main(int argc, char **argv)
 		uint16_t r_type = get16(rp + 12);
 		/* r_stuff at 14 */
 
-		if (r_type == R_IMM32) {
+		if (r_type == R_IMM32 || r_type == R_IMM32_NORELAX) {
 			if (r_symndx >= nsyms)
 				die("relocation symbol index out of range");
 			/* Read symbol: 18 bytes each (SYMESZ) */
@@ -264,7 +265,7 @@ int main(int argc, char **argv)
 		uint32_t r_symndx = get32(rp + 4);
 		uint16_t r_type = get16(rp + 12);
 
-		if (r_type == R_IMM32) {
+		if (r_type == R_IMM32 || r_type == R_IMM32_NORELAX) {
 			if (r_symndx >= nsyms)
 				die("data relocation symbol index out of range");
 			uint8_t *sym = buf + symoff + r_symndx * 18;

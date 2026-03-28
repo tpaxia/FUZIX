@@ -11,19 +11,19 @@
 #define U_DATA__U_CALLNO	9
 #define U_DATA__U_SYSCALL_SP	10
 #define U_DATA__U_RETVAL	14
-#define U_DATA__U_ERROR		16
-#define U_DATA__U_SP		18
-#define U_DATA__U_ININTERRUPT	22
-#define U_DATA__U_CURSIG	23
-#define U_DATA__U_ARGN		24
-#define U_DATA__U_ARGN1		28
-#define U_DATA__U_ARGN2		32
-#define U_DATA__U_ARGN3		36
-#define U_DATA__U_ISP		40
-#define U_DATA__U_TOP		44
-#define U_DATA__U_BREAK		48
-#define U_DATA__U_CODEBASE	52
-#define U_DATA__U_SIGVEC	56
+#define U_DATA__U_ERROR		18
+#define U_DATA__U_SP		20
+#define U_DATA__U_ININTERRUPT	24
+#define U_DATA__U_CURSIG	25
+#define U_DATA__U_ARGN		26
+#define U_DATA__U_ARGN1		30
+#define U_DATA__U_ARGN2		34
+#define U_DATA__U_ARGN3		38
+#define U_DATA__U_ISP		42
+#define U_DATA__U_TOP		46
+#define U_DATA__U_BREAK		50
+#define U_DATA__U_CODEBASE	54
+#define U_DATA__U_SIGVEC	58
 
 #define UBLOCK_SIZE		2048
 

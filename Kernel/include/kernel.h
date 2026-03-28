@@ -547,7 +547,7 @@ typedef struct u_data {
     bool        u_insys;        /* True if in kernel */
     uint8_t     u_callno;       /* sys call being executed. */
     uaddr_t     u_syscall_sp;   /* Stores SP when process makes system call */
-    susize_t    u_retval;       /* Return value from sys call */
+    arg_t       u_retval;       /* Return value from sys call */
     int16_t     u_error;        /* Last error number */
     void *      u_sp;           /* Stores SP when process is switchped */
     bool        u_ininterrupt;  /* True when the interrupt handler is running (prevents recursive interrupts) */

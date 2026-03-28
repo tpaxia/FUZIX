@@ -185,6 +185,17 @@ static void write_call(int n)
 		fprintf(fp, "\tpopl\trr8, @rr14\n");
 	}
 
+	/*
+	 * u_retval is 32-bit (arg_t). On big-endian Z8001, a small value
+	 * like 1 is 0x00000001: r2=0, r3=1. But C functions returning int
+	 * (16-bit) expect the result in r2. Copy r3→r2 so 16-bit callers
+	 * see the correct value. Skip this for syscalls that return 32-bit
+	 * pointers (sbrk, signal, _sigdisp) — they need the full rr2.
+	 */
+	int returns_ptr = (n == 31 || n == 35 || n == 59);
+	if (!returns_ptr)
+		fprintf(fp, "\tld\tr2, r3\n");
+
 	/* Error check: r1 = error code (0 = success) */
 	fprintf(fp, "\ttest\tr1\n");
 	fprintf(fp, "\tret\tz\n");
