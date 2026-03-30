@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 		uint8_t *rp = buf + roff;
 		uint32_t r_vaddr = get32(rp + 0);
 		uint32_t r_symndx = get32(rp + 4);
-		/* r_offset at 8 */
+		uint32_t r_offset = get32(rp + 8);  /* addend */
 		uint16_t r_type = get16(rp + 12);
 		/* r_stuff at 14 */
 
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
 				die("relocation symbol index out of range");
 			/* Read symbol: 18 bytes each (SYMESZ) */
 			uint8_t *sym = buf + symoff + r_symndx * 18;
-			uint32_t sym_value = get32(sym + 8);  /* e_value */
+			uint32_t sym_value = get32(sym + 8) + r_offset;
 			/* Write correct flat value into image */
 			uint32_t final_offset = r_vaddr;
 			if (final_offset + 3 >= image_size)
@@ -263,13 +263,14 @@ int main(int argc, char **argv)
 		uint8_t *rp = buf + roff;
 		uint32_t r_vaddr = get32(rp + 0);
 		uint32_t r_symndx = get32(rp + 4);
+		uint32_t r_offset = get32(rp + 8);  /* addend */
 		uint16_t r_type = get16(rp + 12);
 
 		if (r_type == R_IMM32 || r_type == R_IMM32_NORELAX) {
 			if (r_symndx >= nsyms)
 				die("data relocation symbol index out of range");
 			uint8_t *sym = buf + symoff + r_symndx * 18;
-			uint32_t sym_value = get32(sym + 8);
+			uint32_t sym_value = get32(sym + 8) + r_offset;
 			/* Data reloc vaddr is already absolute (includes text offset)
 			 * because the linker script places .data at SIZEOF(.text) */
 			uint32_t final_offset = r_vaddr;

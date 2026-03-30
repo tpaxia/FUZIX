@@ -140,7 +140,6 @@ void sh_free(void *ap)
         }
 }
 
-#define DEBUG
 #ifdef DEBUG
 void chkbptr(BLKPTR ptr)
 {

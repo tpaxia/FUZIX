@@ -11,6 +11,11 @@
 !   Args on stack at rr14(#4), rr14(#6/8), etc.
 !   Return in r2 (16-bit) or rr2 (32-bit)
 !
+! On big-endian Z8001, a 32-bit return value N is r2=0, r3=N.
+! C functions returning int (16-bit) expect the result in r2.
+! Add 'ld r2, r3' after sc for int-returning syscalls.
+! Do NOT add it for pointer-returning syscalls (signal).
+!
 ! Syscall numbers from Kernel/include/syscall_name.h:
 !   0 = _exit, 1 = open, 2 = close, 7 = read, 8 = write
 
@@ -36,6 +41,7 @@ _open:
 	clr	r6
 	clr	r7			! mode = 0
 	sc	#0
+	ld	r2, r3
 	ret
 
 ! int read(int fd, void *buf, int count)
@@ -48,6 +54,7 @@ _read:
 	clr	r6
 	ld	r7, rr14(#10)		! count
 	sc	#0
+	ld	r2, r3
 	ret
 
 ! int fork(void) — kernel _fork(uint16_t flags, void *addr)
@@ -65,6 +72,7 @@ _fork:
 	sc	#0
 	popl	rr12, @rr14
 	popl	rr8, @rr14
+	ld	r2, r3
 	ret
 
 ! int getpid(void)
@@ -72,9 +80,10 @@ _fork:
 _getpid:
 	ld	r1, #18			! syscall 18 = getpid
 	sc	#0
+	ld	r2, r3
 	ret
 
-! void *signal(int sig, void *handler)
+! void *signal(int sig, void *handler) — returns 32-bit pointer
 	.global	_signal
 _signal:
 	ld	r1, #35			! syscall 35 = signal
@@ -82,7 +91,7 @@ _signal:
 	ld	r3, rr14(#4)		! sig (16-bit)
 	ldl	rr4, rr14(#6)		! handler (32-bit pointer)
 	sc	#0
-	ret
+	ret				! return full rr2 (32-bit pointer)
 
 ! int kill(int pid, int sig)
 	.global	_kill
@@ -93,6 +102,7 @@ _kill:
 	clr	r4
 	ld	r5, rr14(#6)		! sig
 	sc	#0
+	ld	r2, r3
 	ret
 
 ! int execve(const char *path, char *argv[], char *envp[])
@@ -103,6 +113,7 @@ _execve:
 	ldl	rr4, rr14(#8)		! argv (32-bit ptr)
 	ldl	rr6, rr14(#12)		! envp (32-bit ptr)
 	sc	#0
+	ld	r2, r3
 	ret
 
 ! int waitpid(int pid, int *status, int options)
@@ -115,6 +126,7 @@ _waitpid:
 	clr	r6
 	ld	r7, rr14(#10)		! options
 	sc	#0
+	ld	r2, r3
 	ret
 
 ! int write(int fd, const void *buf, int count)
@@ -127,4 +139,5 @@ _write:
 	clr	r6
 	ld	r7, rr14(#10)		! count (16-bit → rr6 = 0:count)
 	sc	#0
+	ld	r2, r3
 	ret
