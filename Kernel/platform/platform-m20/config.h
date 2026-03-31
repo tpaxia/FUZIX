@@ -43,7 +43,7 @@
 #define CMDLINE	NULL
 
 /* Device parameters */
-#define NUM_DEV_TTY 1		/* Serial port only for now */
+#define NUM_DEV_TTY 1		/* CRT display + keyboard */
 #define TTYDEV   BOOT_TTY
 
 #define NBUFS    16		/* Number of block buffers */

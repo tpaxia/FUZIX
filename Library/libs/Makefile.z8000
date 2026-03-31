@@ -5,7 +5,7 @@ AR = $(CROSS_COMPILE)ar
 LINKER = $(CROSS_COMPILE)ld
 PLATFORM = z8000
 export PLATFORM
-CC_OPT = -DUSE_SYSMALLOC -fno-strict-aliasing -fomit-frame-pointer -fno-builtin -Wall -msegmented -Os -c -I../include -I../include/z8000
+CC_OPT = -fno-strict-aliasing -fomit-frame-pointer -fno-builtin -Wall -msegmented -Os -c -I../include -I../include/z8000
 ASM_OPT = -z8001 -o
 # copied in from kernel tree
 KRN_HEADERS = userstructs.h drivewire.h

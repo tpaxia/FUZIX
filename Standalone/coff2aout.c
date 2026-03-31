@@ -168,19 +168,19 @@ int main(int argc, char **argv)
 			       s_relptr, s_nreloc, s_flags);
 		}
 
-		if (s_flags & STYP_TEXT) {
+		if (memcmp(sh, ".text\0\0\0", 8) == 0) {
 			text_size = s_size;
 			text_scnptr = s_scnptr;
 			text_relptr = s_relptr;
 			text_nreloc = s_nreloc;
 			has_text = 1;
-		} else if (s_flags & STYP_DATA) {
+		} else if (memcmp(sh, ".data\0\0\0", 8) == 0) {
 			data_size = s_size;
 			data_scnptr = s_scnptr;
 			data_relptr = s_relptr;
 			data_nreloc = s_nreloc;
 			has_data = 1;
-		} else if (s_flags & STYP_BSS) {
+		} else if (memcmp(sh, ".bss\0\0\0\0", 8) == 0) {
 			bss_size = s_size;
 			has_bss = 1;
 		}

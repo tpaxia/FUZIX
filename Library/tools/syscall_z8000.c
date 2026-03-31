@@ -67,7 +67,7 @@ static const char *syscall_types[NR_SYSCALL] = {
 	"ww",	/* 36: dup2(int, int) */
 	"w",	/* 37: _pause(unsigned int) */
 	"w",	/* 38: _alarm(unsigned int) */
-	"ww",	/* 39: kill(pid_t, int) */
+	"sw",	/* 39: kill(pid_t, int) */
 	"l",	/* 40: pipe(ptr) */
 	"",	/* 41: getgid() */
 	"l",	/* 42: times(ptr) */
@@ -83,7 +83,7 @@ static const char *syscall_types[NR_SYSCALL] = {
 	"l",	/* 52: rmdir(ptr) */
 	"",	/* 53: setpgrp() */
 	"lw",	/* 54: _uname(ptr, int) */
-	"wlw",	/* 55: waitpid(pid_t, ptr, int) */
+	"slw",	/* 55: waitpid(pid_t, ptr, int) */
 	"lwww",	/* 56: _profil(ptr, u16, u16, s16) — 4 args, rare */
 	"wwl",	/* 57: uadmin(int, int, ptr) */
 	"w",	/* 58: nice(int) */
@@ -93,7 +93,7 @@ static const char *syscall_types[NR_SYSCALL] = {
 	"",	/* 62: yield() */
 	"l",	/* 63: acct(ptr) */
 	"w",	/* 64: memalloc */
-	"w",	/* 65: memfree */
+	"l",	/* 65: memfree(ptr) */
 	"l",	/* 66: __netcall(ptr) */
 	"wl",	/* 67: _ftruncate(int, ptr) */
 	"",	/* 68: nosys */
@@ -167,8 +167,17 @@ static void write_call(int n)
 			fprintf(fp, "\tldl\t%s, rr14(#%d)\n",
 				regpair[arg], offset);
 			offset += 4;
+		} else if (types[arg] == 's') {
+			/* 16-bit signed: sign-extend to 32-bit pair */
+			fprintf(fp, "\tld\t%s, rr14(#%d)\n",
+				regpair_lo[arg], offset);
+			fprintf(fp, "\tld\t%s, %s\n",
+				regpair_hi[arg], regpair_lo[arg]);
+			fprintf(fp, "\tsra\t%s, #15\n",
+				regpair_hi[arg]);
+			offset += 2;
 		} else {
-			/* 16-bit: zero-extend to 32-bit pair */
+			/* 16-bit unsigned: zero-extend to 32-bit pair */
 			fprintf(fp, "\tclr\t%s\n", regpair_hi[arg]);
 			fprintf(fp, "\tld\t%s, rr14(#%d)\n",
 				regpair_lo[arg], offset);
@@ -192,7 +201,7 @@ static void write_call(int n)
 	 * see the correct value. Skip this for syscalls that return 32-bit
 	 * pointers (sbrk, signal, _sigdisp) — they need the full rr2.
 	 */
-	int returns_ptr = (n == 31 || n == 35 || n == 59);
+	int returns_ptr = (n == 31 || n == 35 || n == 59 || n == 64);
 	if (!returns_ptr)
 		fprintf(fp, "\tld\tr2, r3\n");
 

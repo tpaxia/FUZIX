@@ -17,6 +17,7 @@
 	.globl	_outchar
 	.globl	_plt_monitor
 
+	.globl	_crt_put
 	.globl	_trap_monitor
 
 /*
@@ -36,7 +37,8 @@ _plt_monitor:
 _trap_monitor:
 _plt_reboot:
 	di	vi,nvi
-	jr	_plt_reboot
+	ldl	rr12, #0x8400008C	! BIOS cold_boot entry
+	jp	@rr12
 
 _init_early:
 	/*
@@ -283,5 +285,30 @@ _outchar_wait:
 	jr	z, _outchar_wait
 	outb	#TTY_DATA, rl0
 	pop	r1, @rr14
+	ret
+
+/*
+ *	CRT character output via BIOS PROM put_char
+ *	void crt_put(uint_fast8_t c)
+ *
+ *	BIOS entry 0x84000080: character in rl0
+ *	BIOS clobbers r0-r7 and potentially r8-r13, so we must
+ *	save all callee-saved registers.
+ */
+_crt_put:
+	pushl	@rr14, rr8
+	pushl	@rr14, rr10
+	pushl	@rr14, rr12
+
+	ldb	rl0, rr14(#17)		! char arg (offset: 3 pushes * 4 + 4 + 1)
+
+	di	vi,nvi			! prevent re-entry from timer echo
+	ldl	rr12, #0x84000080	! BIOS put_char entry point
+	call	@rr12
+	ei	vi,nvi
+
+	popl	rr12, @rr14
+	popl	rr10, @rr14
+	popl	rr8, @rr14
 	ret
 

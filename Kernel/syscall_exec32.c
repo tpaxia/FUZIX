@@ -43,7 +43,7 @@ static int valid_hdr(inoptr ino, struct exec *bf)
 		return 0;
 	if (bf->stacksize < 4096)
 		bf->stacksize = 4096;
-	/* Emtry must be within text */
+	/* Entry must be within text */
 	if (bf->a_entry >= bf->a_text)
 		return 0;
 	/* Wrapped */
