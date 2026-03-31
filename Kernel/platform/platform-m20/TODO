@@ -76,8 +76,8 @@
 ### Device numbering: swapped major numbers (devices.c, config.h)
   Original M20 had major 0=fd, major 1=hd (BOOTDEVICE=0x0100).  Standard FUZIX
   (basefs.pkg) uses major 0=hd, major 1=fd.  prtroot showed /dev/fd0 as root.
-  Fix: swapped device table entries, BOOTDEVICE=0x0000, BOOTDEVICENAMES="hd#,fd#",
-  CMDLINE="hda rw" for root device and read-write mount.
+  Fix: swapped device table entries, BOOTDEVICE=0x0000, BOOTDEVICENAMES="hd#,fd#".
+  Root mounts ro by default; /etc/rc does fsck then remount rw.
 
 ## Next: drivers
   - Floppy driver — same BIOS disk_io interface as HD

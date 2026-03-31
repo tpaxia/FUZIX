@@ -163,7 +163,9 @@ z8k-coff-nm /Users/paxia/Projects/fuzix/Kernel/platform/platform-m20/fuzix.bin |
 ## Key facts
 - `-X` flag required for mkfs (big-endian)
 - Device numbering: major 0=hd, major 1=fd (matches basefs.pkg standard)
-- CMDLINE "hda rw" boots from hda read-write
+- Root mounts ro by default — /etc/rc does `fsck -a /` then `remount -n / rw`
+- Do NOT force rw at boot (dirty flag breaks fsck)
+- Default stack per userland binary: 8KB (ldz8k STACK=8192); shell uses 16KB (-s 16384)
 - Full init with login: default user `root`, no password
 - chdman must run from /Users/paxia/Projects/mame_latest/mame
 - Serial port (0xC1) is kprintf debug output only — not a user TTY

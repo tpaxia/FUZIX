@@ -4,7 +4,7 @@
 #	COFF relocatable to FUZIX a.out via coff2aout.
 #
 TARGET=a.out
-STACK=4096
+STACK=8192
 
 ARGS=""
 #
