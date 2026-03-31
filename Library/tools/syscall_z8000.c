@@ -208,7 +208,7 @@ static void write_call(int n)
 	/* Error check: r1 = error code (0 = success) */
 	fprintf(fp, "\ttest\tr1\n");
 	fprintf(fp, "\tret\tz\n");
-	fprintf(fp, "\tld\terrno, r1\n");
+	fprintf(fp, "\tld\t_errno, r1\n");
 	fprintf(fp, "\tret\n");
 
 	fclose(fp);

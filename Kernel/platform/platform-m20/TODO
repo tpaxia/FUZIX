@@ -14,6 +14,12 @@
   - 30 userland utilities built and working (ls, echo, cat, grep, etc.)
   - PATH search works (shell finds commands in /bin without full path)
   - Reboot via BIOS cold_boot entry (0x8400008C)
+  - Full init with login/getty — boots to login prompt, /etc/rc runs at boot
+  - 100+ userland utilities via build-filesystem-ng (basefs, util, V7 cmd)
+  - /etc configs (passwd, group, inittab, termcap, rc scripts, mtab, fstab)
+  - Read-write filesystem (CMDLINE "hda rw")
+  - Boot messages on CRT (kprintf writes to both serial and CRT)
+  - Standard device numbering (major 0=hd, major 1=fd, matching basefs.pkg)
 
 ## Bugs fixed this session
 
@@ -50,11 +56,28 @@
   Fix: removed -DUSE_SYSMALLOC.  malloc now uses sbrk to grow the user's own
   data segment, which is always in the correct segment.
 
-## Next: full init
-  - Full init (Applications/util/init) hangs after login — prints "Welcome to FUZIX"
-    (motd) then blocks at execve("/bin/sh") or one of the preceding syscalls
-    (fchown, setgid, setuid, initgroups). Needs syscall tracing to find which call fails.
-  - Currently using stub init that skips login and execs sh directly.
+### Syscall wrappers: errno symbol mismatch (Library/tools/syscall_z8000.c)
+  All syscall wrappers wrote error codes to `errno` (assembly symbol) but C code
+  read from `_errno` (C symbol with underscore prefix). These resolved to different
+  addresses. errno was NEVER set from C's perspective — every perror() said "Success",
+  every `if (errno == ENOEXEC)` check failed, init couldn't fall back to /bin/sh
+  for shell scripts.
+  Fix: generator now emits `ld _errno, r1` instead of `ld errno, r1`.
+
+### crt0: environ loaded as value instead of address (Library/libs/crt0_z8000.S)
+  `ldl rr2, rr14(#8)` loaded the VALUE at ISP+8 (= envp[0], first env string pointer).
+  But `_environ` must be the ADDRESS of the envp array (ISP+8 itself).  With no
+  environment (stub init), envp[0]=NULL so _environ=NULL — worked by accident.
+  With real environment from full init, _environ pointed to a string like
+  "PATH=/bin:/usr/bin" instead of the pointer array — shell crashed in sh_getenv.
+  Fix: `ldl rr2, rr14; addl rr2, #8` computes address instead of loading value.
+  Same fix applied to crt0nostdio_z8000.S.
+
+### Device numbering: swapped major numbers (devices.c, config.h)
+  Original M20 had major 0=fd, major 1=hd (BOOTDEVICE=0x0100).  Standard FUZIX
+  (basefs.pkg) uses major 0=hd, major 1=fd.  prtroot showed /dev/fd0 as root.
+  Fix: swapped device table entries, BOOTDEVICE=0x0000, BOOTDEVICENAMES="hd#,fd#",
+  CMDLINE="hda rw" for root device and read-write mount.
 
 ## Next: drivers
   - Floppy driver — same BIOS disk_io interface as HD

@@ -31,8 +31,9 @@ _environ:
 
 /* Entry point at text[0x20] */
 __start:
-	/* Save environ pointer */
-	ldl	rr2, rr14(#8)
+	/* Save environ pointer — envp[] array starts at ISP+8 */
+	ldl	rr2, rr14
+	addl	rr2, #8
 	ldl	_environ, rr2
 
 	/* Save argv for getopt etc */

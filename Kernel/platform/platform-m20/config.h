@@ -40,7 +40,7 @@
 
 #define BOOT_TTY (512 + 1)	/* First TTY device (serial port) */
 
-#define CMDLINE	"rw"
+#define CMDLINE	"hda rw"
 
 /* Device parameters */
 #define NUM_DEV_TTY 1		/* CRT display + keyboard */
@@ -64,7 +64,7 @@
 #define ITABSIZE	40
 #define UFTSIZE		16
 
-#define BOOTDEVICENAMES "fd#,hd#"
-#define BOOTDEVICE	0x0100		/* hd0 = major 1, minor 0 */
+#define BOOTDEVICENAMES "hd#,fd#"
+#define BOOTDEVICE	0x0000		/* hd0 = major 0, minor 0 */
 
 #define TTY_INIT_BAUD	B9600
