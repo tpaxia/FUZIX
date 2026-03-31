@@ -40,7 +40,7 @@
 
 #define BOOT_TTY (512 + 1)	/* First TTY device (serial port) */
 
-#define CMDLINE	NULL
+#define CMDLINE	"rw"
 
 /* Device parameters */
 #define NUM_DEV_TTY 1		/* CRT display + keyboard */

@@ -277,14 +277,25 @@ _hd_biosio:
  *	Argument on stack (stack calling convention)
  */
 _outchar:
-	push	@rr14, r1
-	ldb	rl0, rr14(#7)		! load char arg from stack
+	pushl	@rr14, rr8
+	pushl	@rr14, rr10
+	pushl	@rr14, rr12
+	ldb	rl0, rr14(#17)		! load char arg (3 pushes*4 + retaddr 4 + 1)
+
+	! Serial output
 _outchar_wait:
 	inb	rl1, #TTY_CTRL		! read status
 	bitb	rl1, #2			! TxEMPTY? (not gated by CTS)
 	jr	z, _outchar_wait
 	outb	#TTY_DATA, rl0
-	pop	r1, @rr14
+
+	! CRT output (BIOS clobbers r0-r13, already saved above)
+	ldl	rr12, #0x84000080	! BIOS put_char entry point
+	call	@rr12
+
+	popl	rr12, @rr14
+	popl	rr10, @rr14
+	popl	rr8, @rr14
 	ret
 
 /*

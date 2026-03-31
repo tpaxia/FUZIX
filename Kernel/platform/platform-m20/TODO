@@ -50,6 +50,12 @@
   Fix: removed -DUSE_SYSMALLOC.  malloc now uses sbrk to grow the user's own
   data segment, which is always in the correct segment.
 
+## Next: full init
+  - Full init (Applications/util/init) hangs after login — prints "Welcome to FUZIX"
+    (motd) then blocks at execve("/bin/sh") or one of the preceding syscalls
+    (fchown, setgid, setuid, initgroups). Needs syscall tracing to find which call fails.
+  - Currently using stub init that skips login and execs sh directly.
+
 ## Next: drivers
   - Floppy driver — same BIOS disk_io interface as HD
   - Serial port as second TTY (i8251A at 0xC1, currently kprintf-only)
@@ -71,6 +77,3 @@
 ## Nice to have
   - RTC / timekeeping
   - Printer driver (i8255A parallel port)
-  - Proper build system integration (make from Kernel/ root)
-  - Read-write filesystem mount
-  - Boot messages on CRT (currently kprintf goes to serial only)

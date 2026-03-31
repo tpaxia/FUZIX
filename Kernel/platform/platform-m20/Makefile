@@ -49,4 +49,9 @@ IMAGES = $(FUZIX_ROOT)/Images/$(TARGET)
 
 diskimage: bootloader.bin
 	mkdir -p $(IMAGES)
-	python3 mkm20hd.py bootloader.bin fuzix.text.bin fuzix.data.bin $(IMAGES)/hd.img
+	cd $(FUZIX_ROOT)/Standalone/filesystem-src && \
+	perl build-filesystem-ng -x \
+		-f $(IMAGES)/filesys.img \
+		-g 256 16384 \
+		-p basefs -p util-mini -p util -p V7-sh -p V7-cmd-micro
+	python3 mkm20hd.py bootloader.bin fuzix.text.bin fuzix.data.bin $(IMAGES)/hd.img $(IMAGES)/filesys.img
